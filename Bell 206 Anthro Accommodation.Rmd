@@ -69,6 +69,7 @@ library(readr)
 library(dplyr)
 library(psych) #for principle component analysis with VARIMAX rotation
 library(googlesheets4) #to import custom dataset
+library(knitr) # for displaying tables in knitted document
 
 # import the libraries
 source("Modules/AccomodationFunctions.R")
@@ -152,7 +153,7 @@ sample_percentile <- sample_scaled_pop$sample_percentiles
 sample_anthro_percentile <- percentile_table(df_anthros_m,sample_percentile)
 
 anthro_summary_m <- sample_anthro_percentile
-sample_anthro_percentile
+kable(sample_anthro_percentile,caption = "Summary of Male Anthropometry")
 
 sample_scaled_pop <- scale_sample_based_on_population(df_anthros_f,pop_f%>% select(-'Source'))
 scaled_sample <- sample_scaled_pop$scaled_sample
@@ -160,7 +161,7 @@ sample_percentile <- sample_scaled_pop$sample_percentiles
 sample_anthro_percentile <- percentile_table(df_anthros_f,sample_percentile)
 
 anthro_summary_f <- sample_anthro_percentile
-sample_anthro_percentile
+kable(sample_anthro_percentile,caption = "Summary of Female Anthropometry")
 ```
 
 # Bivariate Plot: Sitting Height vs. Combo Leg
