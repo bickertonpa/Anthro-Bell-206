@@ -1,0 +1,61 @@
+---
+title: "Boeing 737 Anthro Accommodation"
+author: "Patrick Bickerton"
+date: "2025-06-05"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+# Seat Characteristics
+
+
+df_seat <- read_sheet("https://docs.google.com/spreadsheets/d/15PnkwXaR3InyHGWEtNDFi2e9tD_5irE_rfDoN7sHr-4/edit?gid=0#gid=0")%>% as.data.frame()
+
+n_vert <- 12
+n_horiz <- 8
+vertical_range <- seq(0, 385, length.out = n_vert)   # vertical travel
+swing_offset <- 30                                  # forward offset at full down
+arc_radius <- 385 #sqrt(swing_offset^2 + max(vertical_range)^2)  # hypotenuse
+horiz_steps <- seq(0, 455, length.out = n_horiz)    # actual fore-aft adjustment
+
+# Simulate the arc-based horizontal offset for each vertical step
+swing_data <- data.frame(
+  V_step = 1:n_vert,
+  vertical = vertical_range
+) %>%
+  mutate(
+    theta = asin(vertical / arc_radius),
+    horiz_swing = swing_offset - arc_radius * cos(theta)
+  )
+
+# Cross with horizontal steps
+seat_positions <- expand_grid(
+  V_step = 1:n_vert,
+  H_step = 1:n_horiz
+) %>%
+  left_join(swing_data, by = "V_step") %>%
+  mutate(
+    horiz = horiz_swing + horiz_steps[H_step]
+  )
+
+# Plot
+ggplot(seat_positions, aes(x = horiz, y = vertical)) +
+  geom_point(size = 2, color = "blue") +
+  coord_fixed() +
+  labs(
+    title = "Seat Adjustment Grid (Horizontal x Vertical)",
+    x = "Horizontal Offset (mm)",
+    y = "Vertical Offset (mm)"
+  ) +
+  theme_minimal()
+
+```
+
+
+```{r}
+sessionInfo()
+```
