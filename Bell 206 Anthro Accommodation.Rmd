@@ -158,13 +158,13 @@ Care must be taken when selecting the appropriate population subset for percenti
 - The output tables below provide summary statistics for each participant's measurements in both raw and percentile formats. These tables serve as a diagnostic tool to identify individuals who may fall outside accommodation envelopes for specific cockpit features.
 
 ```{r}
-sample_scaled_pop <- scale_sample_based_on_population(df_anthros_m,pop_m %>% dplyr::select(-'Source'))
+sample_scaled_pop <- scale_sample_based_on_population(df_anthros_m,pop_m %>% dplyr::select(-'Source',-Weight))
 scaled_sample <- sample_scaled_pop$scaled_sample
 sample_percentile <- sample_scaled_pop$sample_percentiles
 sample_anthro_percentile <- percentile_table(df_anthros_m,sample_percentile)
 write.csv(sample_anthro_percentile, "output/anthro_percentile_m.csv", row.names = FALSE)
 
-anthro_summary_m <- sample_anthro_percentile
+anthro_summary_m <- sample_anthro_percentile 
 
 # Suppose 'my_wide_df' is your data frame with 20 columns
 block_1 <- anthro_summary_m %>% dplyr::select(1:5)
@@ -178,7 +178,7 @@ kable(block_2, caption = "Male Block 2: Variables 6–10")
 kable(block_3, caption = "Male Block 3: Variables 11–15")
 kable(block_4, caption = "Male Block 4: Variables 16–20")
 
-sample_scaled_pop <- scale_sample_based_on_population(df_anthros_f,pop_f%>% dplyr::select(-'Source'))
+sample_scaled_pop <- scale_sample_based_on_population(df_anthros_f,pop_f%>% dplyr::select(-'Source',-Weight))
 scaled_sample <- sample_scaled_pop$scaled_sample
 sample_percentile <- sample_scaled_pop$sample_percentiles
 sample_anthro_percentile <- percentile_table(df_anthros_f,sample_percentile)

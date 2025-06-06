@@ -448,7 +448,7 @@ participant’s measurements in both raw and percentile formats. These
 tables serve as a diagnostic tool to identify individuals who may fall
 outside accommodation envelopes for specific cockpit features.</p></li>
 </ul>
-<div class="sourceCode" id="cb27"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb27-1"><a href="#cb27-1" tabindex="-1"></a>sample_scaled_pop <span class="ot">&lt;-</span> <span class="fu">scale_sample_based_on_population</span>(df_anthros_m,pop_m <span class="sc">%&gt;%</span> dplyr<span class="sc">::</span><span class="fu">select</span>(<span class="sc">-</span><span class="st">&#39;Source&#39;</span>))</span>
+<div class="sourceCode" id="cb27"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb27-1"><a href="#cb27-1" tabindex="-1"></a>sample_scaled_pop <span class="ot">&lt;-</span> <span class="fu">scale_sample_based_on_population</span>(df_anthros_m,pop_m <span class="sc">%&gt;%</span> dplyr<span class="sc">::</span><span class="fu">select</span>(<span class="sc">-</span><span class="st">&#39;Source&#39;</span>,<span class="sc">-</span>Weight))</span>
 <span id="cb27-2"><a href="#cb27-2" tabindex="-1"></a>scaled_sample <span class="ot">&lt;-</span> sample_scaled_pop<span class="sc">$</span>scaled_sample</span>
 <span id="cb27-3"><a href="#cb27-3" tabindex="-1"></a>sample_percentile <span class="ot">&lt;-</span> sample_scaled_pop<span class="sc">$</span>sample_percentiles</span>
 <span id="cb27-4"><a href="#cb27-4" tabindex="-1"></a>sample_anthro_percentile <span class="ot">&lt;-</span> <span class="fu">percentile_table</span>(df_anthros_m,sample_percentile)</span></code></pre></div>
@@ -456,8 +456,7 @@ outside accommodation envelopes for specific cockpit features.</p></li>
 ##  [3] &quot;Eye Height - Sitting&quot;      &quot;Acromial Height - Sitting&quot;
 ##  [5] &quot;Knee Height - Sitting&quot;     &quot;Thigh Clearance&quot;          
 ##  [7] &quot;Biacromial Breadth&quot;        &quot;Buttock-Knee Length&quot;      
-##  [9] &quot;Thumbtip Reach&quot;            &quot;Weight&quot;                   
-## [11] &quot;Combo Leg&quot;</code></pre>
+##  [9] &quot;Thumbtip Reach&quot;            &quot;Combo Leg&quot;</code></pre>
 <pre><code>## Warning: Using an external vector in selections was deprecated in tidyselect 1.1.0.
 ## ℹ Please use `all_of()` or `any_of()` instead.
 ##   # Was:
@@ -472,7 +471,7 @@ outside accommodation envelopes for specific cockpit features.</p></li>
 ## generated.</code></pre>
 <div class="sourceCode" id="cb30"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb30-1"><a href="#cb30-1" tabindex="-1"></a><span class="fu">write.csv</span>(sample_anthro_percentile, <span class="st">&quot;output/anthro_percentile_m.csv&quot;</span>, <span class="at">row.names =</span> <span class="cn">FALSE</span>)</span>
 <span id="cb30-2"><a href="#cb30-2" tabindex="-1"></a></span>
-<span id="cb30-3"><a href="#cb30-3" tabindex="-1"></a>anthro_summary_m <span class="ot">&lt;-</span> sample_anthro_percentile</span>
+<span id="cb30-3"><a href="#cb30-3" tabindex="-1"></a>anthro_summary_m <span class="ot">&lt;-</span> sample_anthro_percentile </span>
 <span id="cb30-4"><a href="#cb30-4" tabindex="-1"></a></span>
 <span id="cb30-5"><a href="#cb30-5" tabindex="-1"></a><span class="co"># Suppose &#39;my_wide_df&#39; is your data frame with 20 columns</span></span>
 <span id="cb30-6"><a href="#cb30-6" tabindex="-1"></a>block_1 <span class="ot">&lt;-</span> anthro_summary_m <span class="sc">%&gt;%</span> dplyr<span class="sc">::</span><span class="fu">select</span>(<span class="dv">1</span><span class="sc">:</span><span class="dv">5</span>)</span>
@@ -548,144 +547,136 @@ outside accommodation envelopes for specific cockpit features.</p></li>
 <div class="sourceCode" id="cb31"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb31-1"><a href="#cb31-1" tabindex="-1"></a><span class="fu">kable</span>(block_2, <span class="at">caption =</span> <span class="st">&quot;Male Block 2: Variables 6–10&quot;</span>)</span></code></pre></div>
 <table>
 <caption>Male Block 2: Variables 6–10</caption>
-<colgroup>
-<col width="4%" />
-<col width="22%" />
-<col width="21%" />
-<col width="9%" />
-<col width="17%" />
-<col width="25%" />
-</colgroup>
 <thead>
 <tr class="header">
 <th align="left"></th>
+<th align="right">Weight</th>
 <th align="right">left_x_to_finger</th>
 <th align="right">left_x_to_thumb</th>
 <th align="left">Source</th>
 <th align="left">Stature (%)</th>
-<th align="left">Sitting Height (%)</th>
 </tr>
 </thead>
 <tbody>
 <tr class="odd">
 <td align="left">2</td>
+<td align="right">92.26</td>
 <td align="right">227</td>
 <td align="right">161</td>
 <td align="left">Study</td>
 <td align="left">1882 (95.3%)</td>
-<td align="left">990 (96.2%)</td>
 </tr>
 <tr class="even">
 <td align="left">3</td>
+<td align="right">82.19</td>
 <td align="right">186</td>
 <td align="right">126</td>
 <td align="left">Study</td>
 <td align="left">1747 (38.2%)</td>
-<td align="left">936 (59.3%)</td>
 </tr>
 <tr class="odd">
 <td align="left">4</td>
+<td align="right">126.01</td>
 <td align="right">218</td>
 <td align="right">151</td>
 <td align="left">Study</td>
 <td align="left">1884 (95.6%)</td>
-<td align="left">972 (89.7%)</td>
 </tr>
 <tr class="even">
 <td align="left">6</td>
+<td align="right">83.91</td>
 <td align="right">205</td>
 <td align="right">135</td>
 <td align="left">Study</td>
 <td align="left">1742 (35.5%)</td>
-<td align="left">946 (69.9%)</td>
 </tr>
 <tr class="odd">
 <td align="left">7</td>
+<td align="right">71.30</td>
 <td align="right">191</td>
 <td align="right">130</td>
 <td align="left">Study</td>
 <td align="left">1703 (17.3%)</td>
-<td align="left">904 (24.8%)</td>
 </tr>
 <tr class="even">
 <td align="left">8</td>
+<td align="right">101.79</td>
 <td align="right">201</td>
 <td align="right">137</td>
 <td align="left">Study</td>
 <td align="left">1808 (72.4%)</td>
-<td align="left">949 (72.8%)</td>
 </tr>
 </tbody>
 </table>
 <div class="sourceCode" id="cb32"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb32-1"><a href="#cb32-1" tabindex="-1"></a><span class="fu">kable</span>(block_3, <span class="at">caption =</span> <span class="st">&quot;Male Block 3: Variables 11–15&quot;</span>)</span></code></pre></div>
-<table style="width:100%;">
+<table>
 <caption>Male Block 3: Variables 11–15</caption>
 <colgroup>
 <col width="2%" />
-<col width="19%" />
-<col width="23%" />
-<col width="20%" />
 <col width="15%" />
-<col width="18%" />
+<col width="20%" />
+<col width="24%" />
+<col width="21%" />
+<col width="16%" />
 </colgroup>
 <thead>
 <tr class="header">
 <th align="left"></th>
+<th align="left">Sitting Height (%)</th>
 <th align="left">Eye Height - Sitting (%)</th>
 <th align="left">Acromial Height - Sitting (%)</th>
 <th align="left">Knee Height - Sitting (%)</th>
 <th align="left">Thigh Clearance (%)</th>
-<th align="left">Biacromial Breadth (%)</th>
 </tr>
 </thead>
 <tbody>
 <tr class="odd">
 <td align="left">2</td>
+<td align="left">990 (96.2%)</td>
 <td align="left">882 (98.4%)</td>
 <td align="left">649 (92.5%)</td>
 <td align="left">609 (99.6%)</td>
 <td align="left">171 (43.6%)</td>
-<td align="left">427 (78.6%)</td>
 </tr>
 <tr class="even">
 <td align="left">3</td>
+<td align="left">936 (59.3%)</td>
 <td align="left">811 (49.1%)</td>
 <td align="left">584 (20.9%)</td>
 <td align="left">563 (82%)</td>
 <td align="left">167 (34.4%)</td>
-<td align="left">420 (66.8%)</td>
 </tr>
 <tr class="odd">
 <td align="left">4</td>
+<td align="left">972 (89.7%)</td>
 <td align="left">833 (74.1%)</td>
 <td align="left">653 (94.3%)</td>
 <td align="left">619 (99.9%)</td>
 <td align="left">199 (93.5%)</td>
-<td align="left">417 (61%)</td>
 </tr>
 <tr class="even">
 <td align="left">6</td>
+<td align="left">946 (69.9%)</td>
 <td align="left">834 (75.1%)</td>
 <td align="left">624 (71.8%)</td>
 <td align="left">511 (15.5%)</td>
 <td align="left">174 (50.7%)</td>
-<td align="left">421 (68.6%)</td>
 </tr>
 <tr class="odd">
 <td align="left">7</td>
+<td align="left">904 (24.8%)</td>
 <td align="left">792 (27.4%)</td>
 <td align="left">580 (17.2%)</td>
 <td align="left">531 (39.2%)</td>
 <td align="left">173 (48.3%)</td>
-<td align="left">431 (84.1%)</td>
 </tr>
 <tr class="even">
 <td align="left">8</td>
+<td align="left">949 (72.8%)</td>
 <td align="left">844 (83.7%)</td>
 <td align="left">616 (61.8%)</td>
 <td align="left">576 (91.9%)</td>
 <td align="left">159 (19%)</td>
-<td align="left">471 (99.9%)</td>
 </tr>
 </tbody>
 </table>
@@ -693,67 +684,67 @@ outside accommodation envelopes for specific cockpit features.</p></li>
 <table style="width:100%;">
 <caption>Male Block 4: Variables 16–20</caption>
 <colgroup>
-<col width="4%" />
-<col width="32%" />
-<col width="25%" />
-<col width="20%" />
-<col width="18%" />
+<col width="3%" />
+<col width="27%" />
+<col width="28%" />
+<col width="22%" />
+<col width="16%" />
 </colgroup>
 <thead>
 <tr class="header">
 <th align="left"></th>
+<th align="left">Biacromial Breadth (%)</th>
 <th align="left">Buttock-Knee Length (%)</th>
 <th align="left">Thumbtip Reach (%)</th>
-<th align="left">Weight (%)</th>
 <th align="left">Combo Leg (%)</th>
 </tr>
 </thead>
 <tbody>
 <tr class="odd">
 <td align="left">2</td>
+<td align="left">427 (78.6%)</td>
 <td align="left">648 (90.3%)</td>
 <td align="left">826 (77.3%)</td>
-<td align="left">92.26 (62.7%)</td>
 <td align="left">1257 (97.9%)</td>
 </tr>
 <tr class="even">
 <td align="left">3</td>
+<td align="left">420 (66.8%)</td>
 <td align="left">588 (24.2%)</td>
 <td align="left">775 (33.2%)</td>
-<td align="left">82.19 (35.6%)</td>
 <td align="left">1151 (52.7%)</td>
 </tr>
 <tr class="odd">
 <td align="left">4</td>
+<td align="left">417 (61%)</td>
 <td align="left">655 (93.8%)</td>
 <td align="left">887 (98.5%)</td>
-<td align="left">126.01 (99.6%)</td>
 <td align="left">1274 (99.1%)</td>
 </tr>
 <tr class="even">
 <td align="left">6</td>
+<td align="left">421 (68.6%)</td>
 <td align="left">594 (30.8%)</td>
 <td align="left">785 (42%)</td>
-<td align="left">83.91 (40.1%)</td>
 <td align="left">1105 (21.5%)</td>
 </tr>
 <tr class="odd">
 <td align="left">7</td>
+<td align="left">431 (84.1%)</td>
 <td align="left">567 (8%)</td>
 <td align="left">724 (5.3%)</td>
-<td align="left">71.3 (13.1%)</td>
 <td align="left">1098 (17.9%)</td>
 </tr>
 <tr class="even">
 <td align="left">8</td>
+<td align="left">471 (99.9%)</td>
 <td align="left">621 (65.6%)</td>
 <td align="left">836 (83.6%)</td>
-<td align="left">101.79 (83.6%)</td>
 <td align="left">1197 (82.2%)</td>
 </tr>
 </tbody>
 </table>
-<div class="sourceCode" id="cb34"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb34-1"><a href="#cb34-1" tabindex="-1"></a>sample_scaled_pop <span class="ot">&lt;-</span> <span class="fu">scale_sample_based_on_population</span>(df_anthros_f,pop_f<span class="sc">%&gt;%</span> dplyr<span class="sc">::</span><span class="fu">select</span>(<span class="sc">-</span><span class="st">&#39;Source&#39;</span>))</span>
+<div class="sourceCode" id="cb34"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb34-1"><a href="#cb34-1" tabindex="-1"></a>sample_scaled_pop <span class="ot">&lt;-</span> <span class="fu">scale_sample_based_on_population</span>(df_anthros_f,pop_f<span class="sc">%&gt;%</span> dplyr<span class="sc">::</span><span class="fu">select</span>(<span class="sc">-</span><span class="st">&#39;Source&#39;</span>,<span class="sc">-</span>Weight))</span>
 <span id="cb34-2"><a href="#cb34-2" tabindex="-1"></a>scaled_sample <span class="ot">&lt;-</span> sample_scaled_pop<span class="sc">$</span>scaled_sample</span>
 <span id="cb34-3"><a href="#cb34-3" tabindex="-1"></a>sample_percentile <span class="ot">&lt;-</span> sample_scaled_pop<span class="sc">$</span>sample_percentiles</span>
 <span id="cb34-4"><a href="#cb34-4" tabindex="-1"></a>sample_anthro_percentile <span class="ot">&lt;-</span> <span class="fu">percentile_table</span>(df_anthros_f,sample_percentile)</span></code></pre></div>
@@ -761,8 +752,7 @@ outside accommodation envelopes for specific cockpit features.</p></li>
 ##  [3] &quot;Eye Height - Sitting&quot;      &quot;Acromial Height - Sitting&quot;
 ##  [5] &quot;Knee Height - Sitting&quot;     &quot;Thigh Clearance&quot;          
 ##  [7] &quot;Biacromial Breadth&quot;        &quot;Buttock-Knee Length&quot;      
-##  [9] &quot;Thumbtip Reach&quot;            &quot;Weight&quot;                   
-## [11] &quot;Combo Leg&quot;</code></pre>
+##  [9] &quot;Thumbtip Reach&quot;            &quot;Combo Leg&quot;</code></pre>
 <div class="sourceCode" id="cb36"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb36-1"><a href="#cb36-1" tabindex="-1"></a><span class="fu">write.csv</span>(sample_anthro_percentile, <span class="st">&quot;output/anthro_percentile_f.csv&quot;</span>, <span class="at">row.names =</span> <span class="cn">FALSE</span>)</span>
 <span id="cb36-2"><a href="#cb36-2" tabindex="-1"></a></span>
 <span id="cb36-3"><a href="#cb36-3" tabindex="-1"></a>anthro_summary_f <span class="ot">&lt;-</span> sample_anthro_percentile</span>
@@ -809,80 +799,72 @@ outside accommodation envelopes for specific cockpit features.</p></li>
 <div class="sourceCode" id="cb37"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb37-1"><a href="#cb37-1" tabindex="-1"></a><span class="fu">kable</span>(block_2, <span class="at">caption =</span> <span class="st">&quot;Female Block 2: Variables 6–10&quot;</span>)</span></code></pre></div>
 <table>
 <caption>Female Block 2: Variables 6–10</caption>
-<colgroup>
-<col width="4%" />
-<col width="22%" />
-<col width="21%" />
-<col width="9%" />
-<col width="17%" />
-<col width="25%" />
-</colgroup>
 <thead>
 <tr class="header">
 <th align="left"></th>
+<th align="right">Weight</th>
 <th align="right">left_x_to_finger</th>
 <th align="right">left_x_to_thumb</th>
 <th align="left">Source</th>
 <th align="left">Stature (%)</th>
-<th align="left">Sitting Height (%)</th>
 </tr>
 </thead>
 <tbody>
 <tr class="odd">
 <td align="left">1</td>
+<td align="right">71.58</td>
 <td align="right">189</td>
 <td align="right">130</td>
 <td align="left">Study</td>
 <td align="left">1687 (78.4%)</td>
-<td align="left">877 (55.8%)</td>
 </tr>
 <tr class="even">
 <td align="left">5</td>
+<td align="right">74.66</td>
 <td align="right">190</td>
 <td align="right">138</td>
 <td align="left">Study</td>
 <td align="left">1622 (41.2%)</td>
-<td align="left">880 (59.5%)</td>
 </tr>
 </tbody>
 </table>
 <div class="sourceCode" id="cb38"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb38-1"><a href="#cb38-1" tabindex="-1"></a><span class="fu">kable</span>(block_3, <span class="at">caption =</span> <span class="st">&quot;Female Block 3: Variables 11–15&quot;</span>)</span></code></pre></div>
-<table style="width:100%;">
+<table>
 <caption>Female Block 3: Variables 11–15</caption>
 <colgroup>
 <col width="2%" />
-<col width="19%" />
-<col width="23%" />
-<col width="20%" />
 <col width="15%" />
-<col width="18%" />
+<col width="20%" />
+<col width="24%" />
+<col width="21%" />
+<col width="16%" />
 </colgroup>
 <thead>
 <tr class="header">
 <th align="left"></th>
+<th align="left">Sitting Height (%)</th>
 <th align="left">Eye Height - Sitting (%)</th>
 <th align="left">Acromial Height - Sitting (%)</th>
 <th align="left">Knee Height - Sitting (%)</th>
 <th align="left">Thigh Clearance (%)</th>
-<th align="left">Biacromial Breadth (%)</th>
 </tr>
 </thead>
 <tbody>
 <tr class="odd">
 <td align="left">1</td>
+<td align="left">877 (55.8%)</td>
 <td align="left">779 (71.3%)</td>
 <td align="left">585 (59.5%)</td>
 <td align="left">522 (85.9%)</td>
 <td align="left">163 (50.7%)</td>
-<td align="left">382 (78.9%)</td>
 </tr>
 <tr class="even">
 <td align="left">5</td>
+<td align="left">880 (59.5%)</td>
 <td align="left">767 (56.1%)</td>
 <td align="left">581 (53.5%)</td>
 <td align="left">512 (75.6%)</td>
 <td align="left">170 (66.5%)</td>
-<td align="left">374 (65.3%)</td>
 </tr>
 </tbody>
 </table>
@@ -890,34 +872,34 @@ outside accommodation envelopes for specific cockpit features.</p></li>
 <table style="width:100%;">
 <caption>Female Block 4: Variables 16–20</caption>
 <colgroup>
-<col width="4%" />
-<col width="32%" />
-<col width="25%" />
-<col width="18%" />
-<col width="18%" />
+<col width="3%" />
+<col width="27%" />
+<col width="28%" />
+<col width="22%" />
+<col width="16%" />
 </colgroup>
 <thead>
 <tr class="header">
 <th align="left"></th>
+<th align="left">Biacromial Breadth (%)</th>
 <th align="left">Buttock-Knee Length (%)</th>
 <th align="left">Thumbtip Reach (%)</th>
-<th align="left">Weight (%)</th>
 <th align="left">Combo Leg (%)</th>
 </tr>
 </thead>
 <tbody>
 <tr class="odd">
 <td align="left">1</td>
+<td align="left">382 (78.9%)</td>
 <td align="left">598 (72%)</td>
 <td align="left">785 (97%)</td>
-<td align="left">71.58 (58.7%)</td>
 <td align="left">1120 (80.6%)</td>
 </tr>
 <tr class="even">
 <td align="left">5</td>
+<td align="left">374 (65.3%)</td>
 <td align="left">581 (49.1%)</td>
 <td align="left">709 (46.9%)</td>
-<td align="left">74.66 (67.6%)</td>
 <td align="left">1093 (63.3%)</td>
 </tr>
 </tbody>
