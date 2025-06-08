@@ -331,6 +331,8 @@ print(pca_plot)
 
 df_onv <- read_sheet("https://docs.google.com/spreadsheets/d/1S44aRvgLbkFPny4hoekD1MWWY9uoMoWtq0UUjVZzR9A/edit?gid=1101471552#gid=1101471552") %>% as.data.frame() %>% dplyr::select(-seat_fwd_step,-seat_up_mm,-head_clear_pass_fail,-head_clear_mm)
 
+df_onv_737 <- read_sheet("https://docs.google.com/spreadsheets/d/1q4_3hE1rEuWwfZEBP-a2KvRsFJBqM5GBcgHjXmiWA-4/edit?gid=1101471552#gid=1101471552") %>% as.data.frame()
+
 df_head_clear <- read_sheet("https://docs.google.com/spreadsheets/d/1S44aRvgLbkFPny4hoekD1MWWY9uoMoWtq0UUjVZzR9A/edit?gid=1101471552#gid=1101471552") %>% as.data.frame() %>% dplyr::select(-seat_fwd_step,-seat_up_mm,-onv_deg)
 
 df_shin <- read_sheet("https://docs.google.com/spreadsheets/d/1a-abUwfAivR8DNFgPDc2Ht7mFQ0ebO0C9q-vG3LxbbY/edit?gid=96497919#gid=96497919") %>% as.data.frame()
@@ -342,6 +344,8 @@ df_range_of_motion <- read_sheet("https://docs.google.com/spreadsheets/d/1VTS-rY
 df_rudder <- read_sheet("https://docs.google.com/spreadsheets/d/1w8L0ETVMvDVrFIsYAB5N1idFtRWpR8AfZq3mh6kZ6Fc/edit?gid=96497919#gid=96497919") %>% as.data.frame()
 
 df_hand_reach <- read_sheet("https://docs.google.com/spreadsheets/d/1MezpHsf-7rbU6M6C6czHL7ZJDAOgsHX63HWkZWBLItc/edit?gid=96497919#gid=96497919") %>% as.data.frame()
+
+df_controls <- read_sheet("https://docs.google.com/spreadsheets/d/1QnLAoSWwkXrCxc5orFyGn6PkcvkZnylNm4Erdpp2NsY/edit?gid=0#gid=0") %>% as.data.frame()
 
 ```
 
@@ -540,92 +544,111 @@ ggplot(pred_frame, aes(x = predicted, y = actual)) +
 
 # Shin Clearance
 
+Shin clearance was assessed using the minimum measured distance between the participant’s shins and the instrument panel across all pedal positions. Following the methodology adapted from Kennedy (2001) a regression analysis was performed to evaluate the predictive value of lower limb anthropometric dimensions. The Bell 206 instrument panel only extends over the inner-most leg (i.e., the left shin when seated in the right pilot seat)
+
+Initial Pearson correlation analysis showed a strong negative correlation between Combo Leg Length and shin clearance (r = -0.95, *p* < 0.001), indicating that individuals with longer lower limbs are more likely to experience reduced clearance.
+
+A stepwise linear regression confirmed that Combo Leg Length alone was the most predictive variable. The final model explained over 90% of the variance in shin clearance (*R²* = 0.91), with each additional millimetre of Combo Leg associated with a 0.39 mm decrease in clearance. Other candidate predictors, including Buttock-Knee Length and rudder pedal displacement, did not significantly improve model performance and were removed during model selection.
+
+We also found that most participants experienced minimum clearance to their left shin with the right pedal depressed, while some experience minimum clearance when pedals neutral. Furthermost, it is believed that foot length may be a contributing factor as this effects the position of the anckle joint.
+
+This result supports the use of Combo Leg as a proxy variable when assessing lower-limb accommodation in static cockpit configurations such as the Bell 206.
+
 ```{r}
 
 # #Join anthros
-# 
-# df <- df_shin %>%
-#   mutate(ID = as.numeric(ID)) %>%
-#   left_join(df_anthros %>% mutate(ID = as.numeric(ID)), by = "ID")
-# 
-# 
-# cor_test_result <- cor.test(df$`Combo Leg`, df$full_right_passive_mm, method = "pearson")
-# cor_value <- round(cor_test_result$estimate, 2)
-# 
-# # Print detailed summary
-# print(cor_test_result)
-# 
-# ggplot(df, aes(x = `Combo Leg`, y = full_right_passive_mm)) +
-#   geom_point(size = 3, color = "steelblue") +
-#   labs(
-#     title = "Shin Clearance vs. Combo Leg",
-#     subtitle = paste0("Pearson correlation: r = ", cor_value),
-#     x = "Combo Leg (Buttock Knee Length + Knee Height - Sitting) (mm)",
-#     y = "Shin Clearance"
-#   ) +
-#   geom_text(
-#     data = df %>% as.data.frame(),
-#     aes(label = ID, x = `Combo Leg`, y = full_right_passive_mm),
-#     vjust = -1, hjust = 1, size = 3
-#   ) +
-# # Correlation line with 95% CI
-#   geom_smooth(method = "lm", se = TRUE,level = 0.95, color = "blue", linewidth = 0.8) +
-#   
-#   theme_minimal()
-# 
-# # Fit linear model
-# 
-# model <- lm(full_right_passive_mm ~ `Buttock-Knee Length` + 
-#               `Combo Leg`+ `Knee Height - Sitting`, data = df)
-# step_model <- stepAIC(model, direction = "both")
-# summary(step_model)
-# 
-# # Generate predicted values and confidence intervals
-# df$full_right_passive_mm_predicted <- predict(step_model)
-# pred_frame <- data.frame(
-#   predicted = df$full_right_passive_mm_predicted,
-#   actual = df$full_right_passive_mm,
-#   ID = df$ID
-# )
-# 
-# # Extract coefficients and R-squared
-# coefs <- coef(step_model)
-# eq <- paste0(
-#   "Shin Clearance = ", round(coefs[1], 2), 
-#   ifelse(coefs[2] < 0, " - ", " + "), abs(round(coefs[2], 2)), " × ", names(coefs)[2]
-# )
-# 
-# if (length(coefs) > 2) {
-#   for (i in 3:length(coefs)) {
-#     eq <- paste0(
-#       eq,
-#       ifelse(coefs[i] < 0, " - ", " + "), abs(round(coefs[i], 2)), " × ", names(coefs)[i]
-#     )
-#   }
-# }
-# 
-# r_squared <- summary(step_model)$r.squared
-# subtitle_text <- paste(eq, sprintf("  |  R² = %.2f", r_squared))
-# 
-# ggplot(pred_frame, aes(x = predicted, y = actual)) +
-#   geom_point(size = 3, color = "steelblue") +
-#   geom_smooth(method = "lm", se = TRUE, level = 0.95, color = "black", fill = "lightblue", linetype = "solid") +
-#   geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "gray") +
-#   labs(
-#     title = "Predicted vs Actual Shin Clearance",
-#     subtitle = subtitle_text,
-#     x = "Predicted Shin Clearance (mm)",
-#     y = "Actual Shin Clearance (mm)"
-#   ) +
-#   geom_text(
-#     data = pred_frame %>% as.data.frame(),
-#     aes(label = ID, x = predicted, y = actual),
-#     vjust = -1, hjust = 1, size = 3
-#   ) +
-#   theme(
-#   plot.margin = margin(t = 10, r = 50, b = 10, l = 10)
-# ) +
-#   theme_minimal()
+
+df <- df_shin %>%
+  mutate(
+    ID = as.numeric(ID),
+    min_clearance = pmin(neutral_clearance_mm,
+                         full_left_active_mm, 
+                         full_left_passive_mm, 
+                         full_right_active_mm, 
+                         full_right_passive_mm, 
+                         na.rm = TRUE
+                         )
+    ) %>%
+  left_join(df_anthros %>% mutate(ID = as.numeric(ID)), by = "ID")
+
+
+cor_test_result <- cor.test(df$`Combo Leg`, df$min_clearance, method = "pearson")
+cor_value <- round(cor_test_result$estimate, 2)
+
+# Print detailed summary
+print(cor_test_result)
+
+ggplot(df, aes(x = `Combo Leg`, y = min_clearance)) +
+  geom_point(size = 3, color = "steelblue") +
+  labs(
+    title = "Shin Clearance vs. Combo Leg",
+    subtitle = paste0("Pearson correlation: r = ", cor_value),
+    x = "Combo Leg (Buttock Knee Length + Knee Height - Sitting) (mm)",
+    y = "Minimum Shin Clearance"
+  ) +
+  geom_text(
+    data = df %>% as.data.frame(),
+    aes(label = ID, x = `Combo Leg`, y = min_clearance),
+    vjust = -1, hjust = 1, size = 3
+  ) +
+# Correlation line with 95% CI
+  geom_smooth(method = "lm", se = TRUE,level = 0.95, color = "blue", linewidth = 0.8) +
+
+  theme_minimal()
+
+# Fit linear model
+
+model <- lm(min_clearance ~ `Buttock-Knee Length` +
+              `Combo Leg`+ `Knee Height - Sitting` + rudder_mm, data = df)
+step_model <- stepAIC(model, direction = "both")
+summary(step_model)
+
+# Generate predicted values and confidence intervals
+df$min_clearance_predicted <- predict(step_model)
+pred_frame <- data.frame(
+  predicted = df$min_clearance_predicted,
+  actual = df$min_clearance,
+  ID = df$ID
+)
+
+# Extract coefficients and R-squared
+coefs <- coef(step_model)
+eq <- paste0(
+  "Shin Clearance = ", round(coefs[1], 2),
+  ifelse(coefs[2] < 0, " - ", " + "), abs(round(coefs[2], 2)), " × ", names(coefs)[2]
+)
+
+if (length(coefs) > 2) {
+  for (i in 3:length(coefs)) {
+    eq <- paste0(
+      eq,
+      ifelse(coefs[i] < 0, " - ", " + "), abs(round(coefs[i], 2)), " × ", names(coefs)[i]
+    )
+  }
+}
+
+r_squared <- summary(step_model)$r.squared
+subtitle_text <- paste(eq, sprintf("  |  R² = %.2f", r_squared))
+
+ggplot(pred_frame, aes(x = predicted, y = actual)) +
+  geom_point(size = 3, color = "steelblue") +
+  geom_smooth(method = "lm", se = TRUE, level = 0.95, color = "black", fill = "lightblue", linetype = "solid") +
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "gray") +
+  labs(
+    title = "Predicted vs Actual Shin Clearance",
+    subtitle = subtitle_text,
+    x = "Predicted Shin Clearance (mm)",
+    y = "Actual Shin Clearance (mm)"
+  ) +
+  geom_text(
+    data = pred_frame %>% as.data.frame(),
+    aes(label = ID, x = predicted, y = actual),
+    vjust = -1, hjust = 1, size = 3
+  ) +
+  theme(
+  plot.margin = margin(t = 10, r = 50, b = 10, l = 10)
+) +
+  theme_minimal()
 
 
 ```
@@ -734,367 +757,474 @@ ggplot(pred_frame, aes(x = predicted, y = actual)) +
 
 ```
 
-```{r}
-
-# df_performance <- df_performance %>%
-#   rename(
-#     c('Fwd' = 'DERP_Down'),
-#     c('Up' = 'DERP_Up'),
-#     c('ID' = 'Participant')
-#   ) %>%
-#     mutate(
-#     Up = Up * 10, # cockpit data sheets in cm
-#     Fwd = Fwd * 10, # cockpit data sheets in cm
-#     ID = as.character(ID)
-#   ) %>%
-#     mutate(
-#     Up = if_else(
-#       `Seat Pos` %in% c("Seat full down/aft", "Seat full down/fwd", 
-#                         "Seat full up/aft", "Seat full up/fwd"),
-#       case_when(
-#         `Seat Pos` == "Seat full down/aft" ~ 398,
-#         `Seat Pos` == "Seat full down/fwd" ~ 398,
-#         `Seat Pos` == "Seat full up/aft" ~ 550,
-#         `Seat Pos` == "Seat full up/fwd" ~ 550
-#       ),
-#       Up  # assuming Up is already numeric
-#     ),
-#     Fwd = if_else(
-#       `Seat Pos` %in% c("Seat full down/aft", "Seat full down/fwd", 
-#                         "Seat full up/aft", "Seat full up/fwd"),
-#       case_when(
-#         `Seat Pos` == "Seat full down/aft" ~ 0,
-#         `Seat Pos` == "Seat full down/fwd" ~ 180+30,
-#         `Seat Pos` == "Seat full up/aft" ~ 0,
-#         `Seat Pos` == "Seat full up/fwd" ~ 180+30
-#       ),
-#       Fwd
-#     )
-#   )
-# 
-# df_vision <- df_performance %>% dplyr::select(ID,Seat, Friend_Hos, `Seat Pos`, Up, Fwd, Ext_Vision)
-# 
-# # fill in seat positions
-# 
-# df_vision_wider <- df_vision %>%
-#   dplyr::select(
-#     -Up,-Fwd
-#   ) %>%
-#   pivot_wider(
-#     names_from = `Seat Pos`,
-#     values_from = Ext_Vision
-#   )
-# 
-# df_vision_friendly <- df_vision %>% filter(Friend_Hos == "- FRIENDLY", Seat == "LEFT SEAT")
-# df_vision_hostile <- df_vision %>% filter(Friend_Hos == "- HOSTILE", Seat == "LEFT SEAT")
-# 
-# # FUll UP / AFT
-# 
-# vision_plot <- df_vision_friendly %>% 
-#   left_join (df_anthros,by = 'ID') %>%
-#   filter(
-#     `Seat Pos` == "Seat full up/aft"
-#   )
-# 
-# cor_test_result <- cor.test(vision_plot$`Eye Height - Sitting`, vision_plot$Ext_Vision, method = "pearson")
-# cor_value <- round(cor_test_result$estimate, 2)
-# 
-# # Print detailed summary
-# print(cor_test_result)
-# 
-# ggplot(vision_plot, aes(x = `Eye Height - Sitting`, y = Ext_Vision)) +
-#   geom_point(size = 3, color = "steelblue") +
-#   labs(
-#     title = "External Vision vs. Eye Height (Sitting) (FULL UP/AFT)",
-#     subtitle = paste0("Pearson correlation: r = ", cor_value),
-#     x = "Eye Height - Sitting (mm)",
-#     y = "External Vision Over the Nose (degrees)"
-#   ) +
-#   scale_x_continuous(
-#     limits = c(600, 900)
-#   ) +
-#   scale_y_continuous(
-#     limits = c(-20,0)
-#   ) +
-#   scale_y_reverse()+
-#   geom_text(
-#     data = vision_plot %>% as.data.frame(),
-#     aes(label = Name, x = `Eye Height - Sitting`, y = Ext_Vision),
-#     vjust = -1, hjust = 1, size = 3
-#   ) +
-# # Correlation line with 95% CI
-#   geom_smooth(method = "lm", se = TRUE,level = 0.95, color = "blue", linewidth = 0.8) +
-#   
-#   theme_minimal()
-# 
-# # FUll DERP
-# 
-# vision_plot <- df_vision_friendly %>% 
-#   left_join (df_anthros,by = 'ID') %>%
-#   filter(
-#     `Seat Pos` == "Seat at DERP"
-#   )
-# 
-# cor_test_result <- cor.test(vision_plot$`Eye Height - Sitting`, vision_plot$Ext_Vision, method = "pearson")
-# cor_value <- round(cor_test_result$estimate, 2)
-# 
-# # Print detailed summary
-# print(cor_test_result)
-# 
-# ggplot(vision_plot, aes(x = `Eye Height - Sitting`, y = Ext_Vision)) +
-#   geom_point(size = 3, color = "steelblue") +
-#   labs(
-#     title = "External Vision vs. Eye Height (Sitting) (DERP)",
-#     subtitle = paste0("Pearson correlation: r = ", cor_value),
-#     x = "Eye Height - Sitting (mm)",
-#     y = "External Vision Over the Nose (degrees)"
-#   ) +
-#   scale_x_continuous(
-#     limits = c(600, 900)
-#   ) +
-#   scale_y_continuous(
-#     limits = c(-20,0)
-#   ) +
-#   scale_y_reverse()+
-#   geom_text(
-#     data = vision_plot %>% as.data.frame(),
-#     aes(label = Name, x = `Eye Height - Sitting`, y = Ext_Vision),
-#     vjust = -1, hjust = 1, size = 3
-#   ) +
-# # Correlation line with 95% CI
-#   geom_smooth(method = "lm", se = TRUE,level = 0.95, color = "blue", linewidth = 0.8) +
-#   
-#   theme_minimal()
-
-```
-
 # Reach to Rudder Pedals
 
 Rudder pedal position is a critical component of lower-body accommodation in cockpit fit mapping. The ability to achieve full rudder deflection—particularly with toe brake actuation—is essential for safe ground handling and coordinated flight. Following Zehner’s (2001) methodology, this section evaluates participants’ ability to meet the functional requirement for full rudder pedal reach with the seat various positions.
 
 The omposite `Combo Leg` variable is reported. The rudder pedals were adjusted to the most forward position that the participant could still achieve full rudder deflection and brake application. Negative values represent a missed reach. 
-```{r}
-# Rudder Pedal Reach
-
-# df_rudder <- df_performance %>%
-#   dplyr::select(
-#     ID,Seat, Friend_Hos, `Seat Pos`, Up, Fwd, Rudder_FF
-#     ) %>%
-#   filter(
-#     Seat == "LEFT SEAT",
-#     Friend_Hos == "- FRIENDLY"
-#   )
-# 
-# df_rudder <- df_rudder %>% 
-#   mutate(
-#     Rudder_FF_chr = as.character(Rudder_FF),  # safely coerce to character
-#     Rudder_FF_num = suppressWarnings(as.numeric(Rudder_FF_chr)),  # safely coerce numeric
-#     PassFail = case_when(
-#       !is.na(Rudder_FF_num) & Rudder_FF_num >= 0 ~ "Pass",
-#       !is.na(Rudder_FF_num) & Rudder_FF_num < 0  ~ "Fail",
-#       grepl("fail", Rudder_FF_chr, ignore.case = TRUE) ~ "Fail",
-#       TRUE ~ NA_character_
-#     )
-#   ) %>%
-#     left_join (df_anthros,by = 'ID')
-# 
-# rudder_plot <- df_rudder %>%
-#   filter(
-#     `Seat Pos` == "Seat full up/aft"
-#   )
-# 
-# cor_test_result <- cor.test(rudder_plot$`Combo Leg`, rudder_plot$Rudder_FF_num, method = "pearson")
-# cor_value <- round(cor_test_result$estimate, 2)
-# 
-# ggplot(rudder_plot, aes(x = `Combo Leg`, y = Rudder_FF_num)) +
-#   geom_point(size = 3, color = "steelblue") +
-#   labs(
-#     title = "Further Forward Rudder Pedal Adjustment (Full Up / Full Aft)",
-#     subtitle = paste0("Pearson correlation: r = ", cor_value),
-#     x = "Combo Leg (mm)",
-#     y = "Rudder Pedal Setting (in)"
-#   )+
-#   geom_text(
-#     data = rudder_plot %>% as.data.frame(),
-#     aes(label = Name, x = `Combo Leg`, y = Rudder_FF_num),
-#     vjust = -1, hjust = 1, size = 3
-#   ) +
-# # Correlation line with 95% CI
-#   geom_smooth(method = "lm", se = TRUE,level = 0.95, color = "blue", linewidth = 0.8) +
-#   
-#   theme_minimal()
-# 
-# rudder_plot <- df_rudder %>%
-#   filter(
-#     `Seat Pos` == "Seat full down/aft"
-#   )
-# 
-# cor_test_result <- cor.test(rudder_plot$`Combo Leg`, rudder_plot$Rudder_FF_num, method = "pearson")
-# cor_value <- round(cor_test_result$estimate, 2)
-# 
-# ggplot(rudder_plot, aes(x = `Combo Leg`, y = Rudder_FF_num)) +
-#   geom_point(size = 3, color = "steelblue") +
-#   labs(
-#     title = "Further Forward Rudder Pedal Adjustment (Full Down / Full Aft)",
-#     subtitle = paste0("Pearson correlation: r = ", cor_value),
-#     x = "Combo Leg (mm)",
-#     y = "Rudder Pedal Setting (in)"
-#   )+
-#   geom_text(
-#     data = rudder_plot %>% as.data.frame(),
-#     aes(label = Name, x = `Combo Leg`, y = Rudder_FF_num),
-#     vjust = -1, hjust = 1, size = 3
-#   ) +
-# # Correlation line with 95% CI
-#   geom_smooth(method = "lm", se = TRUE,level = 0.95, color = "blue", linewidth = 0.8) +
-#   
-#   theme_minimal()
-# 
-# rudder_plot <- df_rudder %>%
-#   filter(
-#     `Seat Pos` == "Seat full up/fwd"
-#   )
-# 
-# cor_test_result <- cor.test(rudder_plot$`Combo Leg`, rudder_plot$Rudder_FF_num, method = "pearson")
-# cor_value <- round(cor_test_result$estimate, 2)
-# 
-# ggplot(rudder_plot, aes(x = `Combo Leg`, y = Rudder_FF_num)) +
-#   geom_point(size = 3, color = "steelblue") +
-#   labs(
-#     title = "Further Forward Rudder Pedal Adjustment (Full Up / Full Fwd)",
-#     subtitle = paste0("Pearson correlation: r = ", cor_value),
-#     x = "Combo Leg (mm)",
-#     y = "Rudder Pedal Setting (in)"
-#   )+
-#   geom_text(
-#     data = rudder_plot %>% as.data.frame(),
-#     aes(label = Name, x = `Combo Leg`, y = Rudder_FF_num),
-#     vjust = -1, hjust = 1, size = 3
-#   ) +
-# # Correlation line with 95% CI
-#   geom_smooth(method = "lm", se = TRUE,level = 0.95, color = "blue", linewidth = 0.8) +
-#   
-#   theme_minimal()
-```
 
 ```{r}
-# Reach to controls
 
-# df_reach <- df_performance %>% 
-#   dplyr::select(
-#     ID,Seat, Friend_Hos, `Seat Pos`, Up, Fwd, Master_Caution...8, `CNE/CB`, LandGear_LP, Aux_Pump, LP_pilot, APU, Control_boost, Fire_panel, Throttle_Quad, TQA, Wing_Flap_Ctrl, SEP, SRCH
-#     ) %>%
-#   filter(
-#     Seat == "LEFT SEAT",
-#     Friend_Hos == "- FRIENDLY"
-#   )
-# 
-# df_reach_AUX <- df_reach %>% 
-#   dplyr::select(ID, `Seat Pos`, Aux_Pump, Up, Fwd) %>%
-#   mutate(
-#     Aux_Pump = as.character(Aux_Pump),  # Coerce to character first
-#     Aux_Pump = str_trim(Aux_Pump),      # Remove whitespace (optional but helpful)
-#     Aux_Pump = case_when(
-#       Aux_Pump %in% c("no data", "NULL", "") ~ NA_character_,
-#       TRUE ~ Aux_Pump
-#     )
-#   ) %>%
-#   distinct() %>%  # optional, removes duplicates
-#   pivot_wider(
-#     names_from = `Seat Pos`,
-#     values_from = Aux_Pump
-#   )
-# 
-# # estimate pass reaches for ID 5 and others based on similar controls
-# 
-# df_reach_AUX <- df_reach_AUX %>%
-#   mutate(
-#     Pass = as.numeric(`Seat at DERP`),
-#     Pass = if_else(ID == 5, 15.2, Pass),
-#     Pass = if_else(ID == 11, 14.7, Pass),
-#     
-#     # Coerce columns to numeric before conditional replacement
-#     `Seat full up/aft` = if_else(ID == 11, 14.7, as.numeric(`Seat full up/aft`)),
-#     `Seat full up/fwd` = if_else(ID == 11, 14.7, as.numeric(`Seat full up/fwd`)),
-#     `Seat full down/fwd` = if_else(ID == 11, 14.7, as.numeric(`Seat full down/fwd`))
-#   )
-# 
-# df_reach_AUX <- df_reach_AUX %>%
-#   mutate(
-#     miss_DERP = as.numeric(`Seat at DERP`) - Pass,  # would be zero
-#     miss_UpAft = as.numeric(`Seat full up/aft`) - Pass,  # would be zero
-#     miss_UpFwd = as.numeric(`Seat full up/fwd`) - Pass,  # would be zero
-#     miss_DownAft = as.numeric(`Seat full down/aft`) - Pass,  # would be zero
-#     miss_DownFwd = as.numeric(`Seat full down/fwd`) - Pass  # would be zero
-#   )
-# 
-# df_reach_AUX <- df_reach_AUX %>%
-#     left_join (df_anthros,by = 'ID')
+# #Join anthros
 
-# predictor <- df_reach_AUX$`Thumbtip Reach`+ df_reach_AUX$`Acromial Height - Sitting`
-# seat_cond <- df_reach_AUX$miss_DownAft
-# 
-# cor_test_result <- cor.test(predictor, seat_cond, method = "pearson")
-# cor_value <- round(cor_test_result$estimate, 2)
-# 
-# ggplot(df_reach_AUX, aes(x = predictor, y = seat_cond)) +
-#   geom_point(size = 3, color = "steelblue") +
-#   labs(
-#     title = "Reach Miss of AUX Pump",
-#     subtitle = paste0("Pearson correlation: r = ", cor_value),
-#     x = "Reach Estimate (mm)",
-#     y = "Reach / Miss (cm)"
-#   )+
-#   geom_text(
-#     data = df_reach_AUX %>% as.data.frame(),
-#     aes(label = Name, x = predictor, y = seat_cond),
-#     vjust = -1, hjust = 1, size = 3
-#   ) +
-# # Correlation line with 95% CI
-#   geom_smooth(method = "lm", se = TRUE,level = 0.95, color = "blue", linewidth = 0.8) +
-#   
-#   theme_minimal()
-# 
-# df_reach_AUX_fail <- df_reach_AUX %>%
-#   filter(
-#     ID %in% c(5,6,8,10)
-#   )
+# Extract full forward and aft values from the control data
+rudder_limits <- df_range_of_motion %>%
+  filter(adjustment == "rudder") %>%
+  dplyr::select(min, max) %>%
+  slice(1)  # In case there's more than one row
 
-# model <- lm(miss_UpAft ~ `Thumbtip Reach` + `Acromial Height - Sitting` + `Biacromial Breadth` + Stature + , data = df_reach_AUX_fail)
-# step_model <- stepAIC(model, direction = "both")
-# summary(step_model)
-# 
-# predictions <- predict(step_model, interval = "confidence", level = 0.90)
-# 
-# # Combine actual and predicted values into a new dataframe
-# plot_df <- df_reach_AUX_fail %>%
-#   mutate(
-#     actual = miss_UpAft,
-#     predicted = predictions[, "fit"],
-#     lower90 = predictions[, "lwr"],
-#     upper90 = predictions[, "upr"]
-#   )
-# 
-# # Plot
-# ggplot(plot_df, aes(x = predicted, y = actual)) +
-#   geom_point(color = "steelblue", size = 3) +
-#   geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "gray") +
-#   geom_ribbon(aes(ymin = lower90, ymax = upper90), fill = "lightblue", alpha = 0.3) +
-#   labs(
-#     title = "Predicted vs Actual Reach Miss Distance",
-#     x = "Predicted miss_UpAft",
-#     y = "Actual miss_UpAft"
-#   ) +
-#   theme_minimal()
-#   
-# 
-# model <- lm(`Seat full up/aft` ~ `Thumbtip Reach`, data = df_reach_AUX_fail)
-# summary(model)
-# plot(model)
+df <- df_rudder %>%
+  mutate(
+    ID = as.numeric(ID),
+    rudder_pct_fwd = (rudder_mm/(rudder_limits$max-rudder_limits$min))*100
+    ) %>%
+  left_join(df_anthros %>% mutate(ID = as.numeric(ID)), by = "ID")
+
+cor_test_result <- cor.test(df$`Combo Leg`, df$rudder_mm, method = "pearson")
+cor_value <- round(cor_test_result$estimate, 2)
+
+# Print detailed summary
+print(cor_test_result)
+
+ggplot(df, aes(x = `Combo Leg`, y = rudder_mm)) +
+  geom_point(size = 3, color = "steelblue") +
+  labs(
+    title = "Rudder Carriage Position vs. Combo Leg",
+    subtitle = paste0("Pearson correlation: r = ", cor_value),
+    x = "Combo Leg (Buttock Knee Length + Knee Height - Sitting) (mm)",
+    y = "Maximum Fwd Rudder Carriage Position (mm)"
+  ) +
+  geom_text(
+    data = df %>% as.data.frame(),
+    aes(label = ID, x = `Combo Leg`, y = rudder_mm),
+    vjust = -1, hjust = 1, size = 3
+  ) +
+# Correlation line with 95% CI
+  geom_smooth(method = "lm", se = TRUE,level = 0.95, color = "blue", linewidth = 0.8) +
+
+  theme_minimal()
+
+# Fit linear model
+
+model <- lm(rudder_mm ~  `Combo Leg`, data = df)
+step_model <- stepAIC(model, direction = "both")
+summary(step_model)
+
+# Generate predicted values and confidence intervals
+df$rudder_mm_predicted <- predict(step_model)
+pred_frame <- data.frame(
+  predicted = df$rudder_mm_predicted,
+  actual = df$rudder_mm,
+  ID = df$ID
+)
+
+# Extract coefficients and R-squared
+coefs <- coef(step_model)
+eq <- paste0(
+  "Rudder Position Forward = ", round(coefs[1], 2),
+  ifelse(coefs[2] < 0, " - ", " + "), abs(round(coefs[2], 2)), " × ", names(coefs)[2]
+)
+
+if (length(coefs) > 2) {
+  for (i in 3:length(coefs)) {
+    eq <- paste0(
+      eq,
+      ifelse(coefs[i] < 0, " - ", " + "), abs(round(coefs[i], 2)), " × ", names(coefs)[i]
+    )
+  }
+}
+
+r_squared <- summary(step_model)$r.squared
+subtitle_text <- paste(eq, sprintf("  |  R² = %.2f", r_squared))
+
+ggplot(pred_frame, aes(x = predicted, y = actual)) +
+  geom_point(size = 3, color = "steelblue") +
+  geom_smooth(method = "lm", se = TRUE, level = 0.95, color = "black", fill = "lightblue", linetype = "solid") +
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "gray") +
+  labs(
+    title = "Predicted vs Actual Maximum Rudder Position",
+    subtitle = subtitle_text,
+    x = "Predicted Maximum Forward Rudder Carriage Position (mm)",
+    y = "Actual Maximum Forward Rudder Carriage Position (mm)"
+  ) +
+  geom_text(
+    data = pred_frame %>% as.data.frame(),
+    aes(label = ID, x = predicted, y = actual),
+    vjust = -1, hjust = 1, size = 3
+  ) +
+  theme(
+  plot.margin = margin(t = 10, r = 50, b = 10, l = 10)
+) +
+  theme_minimal()
 
 
 ```
 
+# Reach to Controls
+
+## Zone 1 - LOW ROTOR RPM Push Button Annunciator
+
+The analysis investigated how well participants could reach the LOW ROTOR RPM push button without leaning (Zone 1 posture). A negative correlation was found between thumbtip reach and the miss distance—how far short the participant’s reach fell. Specifically, individuals with shorter thumbtip reach tended to have larger miss distances. The correlation was statistically significant (r = -0.80, p = 0.016), indicating a strong inverse relationship.
+
+A linear regression model confirmed that thumbtip reach was a significant predictor of reach success. For every additional millimetre of thumbtip reach, the miss distance decreased by approximately 0.32 mm. This single-variable model explained about 65% of the variation in reach performance (R² = 0.65), and adding other variables (such as acromial height) did not improve the model.
+
+
+```{r}
+
+#Join anthros
+
+controls <- c(
+  "low_rpm_mm",
+  "ctrl_boost_mm"
+)
+
+
+df_reach_joined <- df_hand_reach %>%
+  mutate(
+    ID = as.numeric(ID)
+    ) %>%
+  pivot_longer(cols = controls, names_to = "control", values_to = "x-to") %>%
+  left_join(df_controls, by = "control") %>% 
+  left_join(df_anthros %>% mutate(ID = as.numeric(ID)), by = "ID") %>%
+    mutate(
+      miss_mm = case_when(
+        control_type == "thumb" ~ `x-to` - `left_x_to_thumb`,
+        control_type == "finger" ~ `x-to` - `left_x_to_finger`,
+        TRUE ~ NA_real_  # fallback in case of unexpected control_type
+      ),
+      equiv_thumbtip_reach = `x-to` + miss_mm
+    )
+
+# Account for depression activation of "finger" controls
+
+df_reach_joined <- df_reach_joined %>%
+  mutate(
+    miss_mm = case_when(
+      control_type == "finger" ~ miss_mm + 3, # button depression
+      TRUE ~ miss_mm  # keep original value for all other types
+    )
+  )
+```
+
+```{r}
+
+# Zone 1 - RPM
+
+df <- df_reach_joined %>% filter(
+  control == "low_rpm_mm",
+  zone == 1
+)
+
+cor_test_result <- cor.test(df$miss_mm, df$`Thumbtip Reach`, method = "pearson")
+cor_value <- round(cor_test_result$estimate, 2)
+
+# Print detailed summary
+print(cor_test_result)
+
+ggplot(df, aes(x = `Thumbtip Reach`, y = miss_mm)) +
+  geom_point(size = 3, color = "steelblue") +
+  labs(
+    title = "Zone 1 Miss to Low RPM Button vs. Thumbtip Reach",
+    subtitle = paste0("Pearson correlation: r = ", cor_value),
+    x = "Thumbtip Reach (mm)",
+    y = "Zone 1 Miss Distance (mm)"
+  ) +
+  geom_text(
+    data = df %>% as.data.frame(),
+    aes(label = ID, x = `Thumbtip Reach`, y = miss_mm),
+    vjust = -1, hjust = 1, size = 3
+  ) +
+# Correlation line with 95% CI
+  geom_smooth(method = "lm", se = TRUE,level = 0.95, color = "blue", linewidth = 0.8) +
+
+  theme_minimal()
+
+# Fit linear model
+
+model <- lm(miss_mm ~ `Thumbtip Reach` +
+              `Acromial Height - Sitting`, data = df)
+step_model <- stepAIC(model, direction = "both")
+summary(step_model)
+
+# Generate predicted values and confidence intervals
+df$miss_mm_predicted <- predict(step_model)
+pred_frame <- data.frame(
+  predicted = df$miss_mm_predicted,
+  actual = df$miss_mm,
+  ID = df$ID
+)
+
+# Extract coefficients and R-squared
+coefs <- coef(step_model)
+eq <- paste0(
+  "Miss Distance = ", round(coefs[1], 2),
+  ifelse(coefs[2] < 0, " - ", " + "), abs(round(coefs[2], 2)), " × ", names(coefs)[2]
+)
+
+if (length(coefs) > 2) {
+  for (i in 3:length(coefs)) {
+    eq <- paste0(
+      eq,
+      ifelse(coefs[i] < 0, " - ", " + "), abs(round(coefs[i], 2)), " × ", names(coefs)[i]
+    )
+  }
+}
+
+r_squared <- summary(step_model)$r.squared
+subtitle_text <- paste(eq, sprintf("  |  R² = %.2f", r_squared))
+
+ggplot(pred_frame, aes(x = predicted, y = actual)) +
+  geom_point(size = 3, color = "steelblue") +
+  geom_smooth(method = "lm", se = TRUE, level = 0.95, color = "black", fill = "lightblue", linetype = "solid") +
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "gray") +
+  labs(
+    title = "Predicted vs Actual Zone 1 Miss to LOW ROTOR Push Button",
+    subtitle = subtitle_text,
+    x = "Predicted Zone 1 Miss to LOW ROTOR Push Button (mm)",
+    y = "Actual Zone 1 Miss to LOW ROTOR Push Button(mm)"
+  ) +
+  geom_text(
+    data = pred_frame %>% as.data.frame(),
+    aes(label = ID, x = predicted, y = actual),
+    vjust = -1, hjust = 1, size = 3
+  ) +
+  theme(
+  plot.margin = margin(t = 10, r = 50, b = 10, l = 10)
+) +
+  theme_minimal()
+
+```
+
+## Zone 1 - Control Boost Toggle Switch
+
+The analysis assessed whether body dimensions could predict participants’ ability to reach the Control Boost toggle switch without leaning (Zone 1 posture). The Pearson correlation between thumbtip reach and miss distance was moderately strong (r = -0.66), suggesting that longer thumbtip reach may be associated with better reach performance. However, this relationship did not reach statistical significance (p = 0.074), possibly due to the small sample size.
+
+A linear regression model including thumbtip reach and acromial height accounted for about 60% of the variation in miss distance (R² = 0.60). Of the two predictors, thumbtip reach showed a borderline significant contribution (p = 0.058), with each additional millimetre of reach associated with a 0.85 mm reduction in miss distance. Acromial height was not a significant predictor.
+
+These findings suggest that thumbtip reach may still be a relevant measure for reach performance, though the relationship in this case is weaker and less conclusive compared to other controls. Further data may help clarify this relationship.
+
+```{r}
+# Zone 1 - Control Boost
+
+df <- df_reach_joined %>% filter(
+  control == "ctrl_boost_mm",
+  zone == 1
+)
+
+cor_test_result <- cor.test(df$miss_mm, df$`Thumbtip Reach`, method = "pearson")
+cor_value <- round(cor_test_result$estimate, 2)
+
+# Print detailed summary
+print(cor_test_result)
+
+ggplot(df, aes(x = `Thumbtip Reach`, y = miss_mm)) +
+  geom_point(size = 3, color = "steelblue") +
+  labs(
+    title = "Zone 1 Miss to Control Boost vs. Thumbtip Reach",
+    subtitle = paste0("Pearson correlation: r = ", cor_value),
+    x = "Thumbtip Reach (mm)",
+    y = "Zone 1 Miss Distance (mm)"
+  ) +
+  geom_text(
+    data = df %>% as.data.frame(),
+    aes(label = ID, x = `Thumbtip Reach`, y = miss_mm),
+    vjust = -1, hjust = 1, size = 3
+  ) +
+# Correlation line with 95% CI
+  geom_smooth(method = "lm", se = TRUE,level = 0.95, color = "blue", linewidth = 0.8) +
+
+  theme_minimal()
+
+# Fit linear model
+
+model <- lm(miss_mm ~ `Thumbtip Reach` +
+              `Acromial Height - Sitting`, data = df)
+step_model <- stepAIC(model, direction = "both")
+summary(step_model)
+
+# Generate predicted values and confidence intervals
+df$miss_mm_predicted <- predict(step_model)
+pred_frame <- data.frame(
+  predicted = df$miss_mm_predicted,
+  actual = df$miss_mm,
+  ID = df$ID
+)
+
+# Extract coefficients and R-squared
+coefs <- coef(step_model)
+eq <- paste0(
+  "Miss Distance = ", round(coefs[1], 2),
+  ifelse(coefs[2] < 0, " - ", " + "), abs(round(coefs[2], 2)), " × ", names(coefs)[2]
+)
+
+if (length(coefs) > 2) {
+  for (i in 3:length(coefs)) {
+    eq <- paste0(
+      eq,
+      ifelse(coefs[i] < 0, " - ", " + "), abs(round(coefs[i], 2)), " × ", names(coefs)[i]
+    )
+  }
+}
+
+r_squared <- summary(step_model)$r.squared
+subtitle_text <- paste(eq, sprintf("  |  R² = %.2f", r_squared))
+
+ggplot(pred_frame, aes(x = predicted, y = actual)) +
+  geom_point(size = 3, color = "steelblue") +
+  geom_smooth(method = "lm", se = TRUE, level = 0.95, color = "black", fill = "lightblue", linetype = "solid") +
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "gray") +
+  labs(
+    title = "Predicted vs Actual Zone 1 Miss to Control Boost Toggle Switch",
+    subtitle = subtitle_text,
+    x = "Predicted Zone 1 Miss to Control Boost Toggle Switch (mm)",
+    y = "Actual Zone 1 Miss to Control Boost Toggle Switch"
+  ) +
+  geom_text(
+    data = pred_frame %>% as.data.frame(),
+    aes(label = ID, x = predicted, y = actual),
+    vjust = -1, hjust = 1, size = 3
+  ) +
+  theme(
+  plot.margin = margin(t = 10, r = 50, b = 10, l = 10)
+) +
+  theme_minimal()
+
+
+```
+
+# Boeing 737 Over the Nose Vision
+
+We also took the opportunity to measure the over the nose vision of the Beoing 737 pilot seat which has horizontal and vertical adjustments. Notably, both vertical and horizontal adjustments rotate the seat about an axis and therefore affect both x and y coordinates of the seat reference point. Furthermore, the seat also includes a back rest recline adjustment. For simplicity, ONV were recorded at seat full up/aft, down/aft, and down/fwd. The full up/fwd position was not recorded because it was falsely thought to be inaccessible due to the overall difficulty in adjusting the seat position.
+
+```{r}
+
+df_seat_positions <- read_sheet("https://docs.google.com/spreadsheets/d/1ZP8djxCW8M4S3qmLSWnqe8YVQoUlXagu-mWTaeU3V0Q/edit?gid=0#gid=0") %>% as.data.frame()
+
+#Join anthros
+
+df <- df_onv_737 %>%
+  mutate(
+    ID = as.numeric(ID),
+    seat_up_mm = case_when(
+      seat_up_step == 0 & seat_fwd_step == 0 ~ 0,
+      seat_up_step == 0 & seat_fwd_step == 1 ~ df_seat_positions$y_mm[df_seat_positions$pos == "down_fwd"] - df_seat_positions$y_mm[df_seat_positions$pos == "down_aft"],
+      seat_up_step == 1 & seat_fwd_step == 0 ~ df_seat_positions$y_mm[df_seat_positions$pos == "up_aft"] - df_seat_positions$y_mm[df_seat_positions$pos == "down_aft"],
+      seat_up_step == 1 & seat_fwd_step == 1 ~ df_seat_positions$y_mm[df_seat_positions$pos == "up_fwd"]  - df_seat_positions$y_mm[df_seat_positions$pos == "down_aft"]
+    ),
+    seat_fwd_mm = case_when(
+      seat_up_step == 0 & seat_fwd_step == 0 ~ 0,
+      seat_up_step == 0 & seat_fwd_step == 1 ~  df_seat_positions$x_mm[df_seat_positions$pos == "down_aft"] - df_seat_positions$x_mm[df_seat_positions$pos == "down_fwd"],
+      seat_up_step == 1 & seat_fwd_step == 0 ~ df_seat_positions$x_mm[df_seat_positions$pos == "down_aft"] - df_seat_positions$x_mm[df_seat_positions$pos == "up_aft"],
+      seat_up_step == 1 & seat_fwd_step == 1 ~ df_seat_positions$x_mm[df_seat_positions$pos == "down_aft"] - df_seat_positions$x_mm[df_seat_positions$pos == "up_fwd"]
+    ),
+    seat_pos = case_when(
+      seat_up_step == 0 & seat_fwd_step == 0 ~ "down_aft",
+      seat_up_step == 0 & seat_fwd_step == 1 ~ "down_fwd",
+      seat_up_step == 1 & seat_fwd_step == 0 ~ "up_aft",
+      seat_up_step == 1 & seat_fwd_step == 1 ~ "up_fwd",
+    )
+  ) %>%
+  left_join(df_anthros %>% mutate(ID = as.numeric(ID)), by = "ID")
+
+df_UpAft <- df %>%
+  filter(
+    seat_up_step == 1,
+    seat_fwd_step == 0,
+    recline_up == 1
+  ) 
+
+cor_test_result <- cor.test(df_UpAft$`Eye Height - Sitting`, df_UpAft$onv_deg, method = "pearson")
+cor_value <- round(cor_test_result$estimate, 2)
+
+# Print detailed summary
+print(cor_test_result)
+
+ggplot(df_UpAft, aes(x = `Eye Height - Sitting`, y = onv_deg)) +
+  geom_point(size = 3, color = "steelblue") +
+  labs(
+    title = "External Vision vs. Eye Height (Sitting)",
+    subtitle = paste0("Pearson correlation: r = ", cor_value),
+    x = "Eye Height - Sitting (mm)",
+    y = "External Vision Over the Nose (degrees)"
+  ) +
+  geom_text(
+    data = df_UpAft %>% as.data.frame(),
+    aes(label = ID, x = `Eye Height - Sitting`, y = onv_deg),
+    vjust = -1, hjust = 1, size = 3
+  ) +
+# Correlation line with 95% CI
+  geom_smooth(method = "lm", se = TRUE,level = 0.95, color = "blue", linewidth = 0.8) +
+  
+  theme_minimal()
+
+# Fit linear model
+
+df <- df %>%
+  filter(
+    recline_up == 1
+  )
+
+model <- lm(onv_deg ~ `Eye Height - Sitting` + 
+              seat_up_step + 
+              seat_fwd_step, data = df)
+step_model <- stepAIC(model, direction = "both")
+summary(step_model)
+
+# Add predicted values to the original dataframe
+df$onv_deg_predicted <- predict(step_model)
+
+# Generate predicted values and confidence intervals
+df$onv_deg_predicted <- predict(step_model)
+pred_frame <- data.frame(
+  predicted = df$onv_deg_predicted,
+  actual = df$onv_deg,
+  ID = df$ID,
+  seat_pos = df$seat_pos
+)
+
+# Extract coefficients and R-squared
+coefs <- coef(step_model)
+eq <- paste0(
+  "ONV = ", round(coefs[1], 2), 
+  ifelse(coefs[2] < 0, " - ", " + "), abs(round(coefs[2], 2)), " × ", names(coefs)[2]
+)
+
+if (length(coefs) > 2) {
+  for (i in 3:length(coefs)) {
+    eq <- paste0(
+      eq,
+      ifelse(coefs[i] < 0, " - ", " + "), abs(round(coefs[i], 2)), " × ", names(coefs)[i]
+    )
+  }
+}
+
+r_squared <- summary(step_model)$r.squared
+subtitle_text <- paste(eq, sprintf("  |  R² = %.2f", r_squared))
+
+ggplot(pred_frame, aes(x = predicted, y = actual, color = seat_pos)) +
+  geom_point(size = 3) +
+  geom_smooth(method = "lm", se = TRUE, level = 0.95, color = "black", fill = "lightblue", linetype = "solid") +
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "gray") +
+  labs(
+    title = "Predicted vs Actual Over-the-Nose Vision (ONV)",
+    subtitle = subtitle_text,
+    x = "Predicted ONV (degrees)",
+    y = "Actual ONV (degrees)"
+  ) +
+  geom_text(
+    data = pred_frame %>% as.data.frame(),
+    aes(label = ID, x = predicted, y = actual),
+    vjust = -1, hjust = 1, size = 3,
+    show.legend = FALSE
+  ) +
+  theme(
+  plot.margin = margin(t = 10, r = 80, b = 10, l = 10)
+) +
+  theme_minimal()
+
+subtitle_text
+
+```
 
 
 ```{r}
