@@ -22,7 +22,7 @@ The design and evaluation of crewstations, such as helicopter cockpits, must add
 
 The methodological framework used for this study mirrors the structured approach defined by Zehner (2001), comprising the following steps:
 
-* Defining the User Population: We selected a representative anthropometric sample from the available dataset, filtered to reflect the demographic and physical characteristics of prospective rotary-wing pilots. This includes stature, sitting height, and buttock-knee length, which are known to influence cockpit accommodation.
+* Defining the User Population: We selected a representative anthropometric sample from the available dataset, filtered to reflect the demographic and physical characteristics of prospective rotary-wing pilots. This includes stature, sitting height, and buttock-knee length, which are known to influence cockpit accommodation. We also separate analyses by sex.
 
 * Identifying Operational Requirements: Functional reach, visibility (especially over-the-nose vision), and control actuation were defined as essential operational criteria for the Bell 206. These would normally be informed by pilot interviews, historical ergonomics literature, and observed control configurations in the aircraft. However, for the present effort, these were arbitrarily defined by the test team to prioritize the training opportunity.
 
@@ -47,7 +47,7 @@ The analysis draws from a curated subset of anthropometric data representative o
 
 * Thumbtip Reach (for lateral and forward reach envelope),
 
-Additional anthropometric measurements were taken for exploratory purposes
+Additional anthropometric measurements were taken for exploratory purposes.
 
 All data cleaning and filtering steps are documented in the accompanying code chunks. Where applicable, outlier handling and dimension normalization were performed to align with assumptions of multivariate modeling.
 
@@ -80,15 +80,28 @@ library(MASS) # for stepwise regression
 source("Modules/AccomodationFunctions.R")
 source("Modules/Libraries.R")
 source("Modules/Tables.R")
+source("Modules/Plots.R")
 ```
 
 # Loading Anthropometric Data from Google Sheets
 To facilitate collaboration across a distributed team and ensure the analysis reflects the most up-to-date participant data, this project retrieves anthropometric measurements directly from a centralized Google Sheet using the googlesheets4 package. This approach enables near real-time updates without the need to manually redistribute CSV files or regenerate local datasets.
 
-The use of googlesheets4 supports version control and reproducibility, particularly when this R Markdown file is deployed or shared through GitHub. When hosted in a GitHub repository, the analysis can be automatically re-rendered with the latest data, making it suitable for iterative cockpit fit evaluations or multi-phase studies.
+The use of googlesheets4 permitted any team member with an internet connection to enter data. This R Markdown was also hosted on a computer with internet connection next to the aircraft. This allowed for rapid validation and preliminary analyses of the data added to the Google Sheets. Finally, with the Knitted R Markdown hosted in a GitHub repository, the analyses could be re-rendered with the latest data and shared with anyone, making it suitable for iterative cockpit fit evaluations or multi-phase studies.
 
 The Google Sheet contains standardized anthropometric variables required for cockpit accommodation analysis, such as Sitting Eye Height, Buttock-Knee Length, Functional Arm Reach, and Shoulder Height. Access is authenticated securely through the user’s Google account, and the sheet can be configured with view-only or edit permissions to manage data integrity.
 
+We also add two variables:
+
+1. *combo leg* variable that that more accurately reflects leg reach and clearance constraints in a seated posture than any individual measure alone. 
+
+$$
+\text Combo Leg = Buttock Knee Length + Knee Height Sitting
+$$
+2. Body Mass Index metric to broadly categorize people based on tissue mass and height.
+
+$$
+\text{BMI} = \frac{\text{Weight (kg)}}{\text{Stature (m)}^2}
+$$
 ```{r}
 # Import survey data
 df_anthros <- read_sheet("https://docs.google.com/spreadsheets/d/1ivDEK3W4lSWOvc1rr_CDwM9fo-UZnU5sg26lxeQjKNU/edit?gid=0#gid=0")%>% as.data.frame()
@@ -99,9 +112,10 @@ rownames(df_anthros) <- df_anthros$ID
 df_anthros <- df_anthros %>%
   mutate(
     'Combo Leg' = `Knee Height - Sitting` + `Buttock-Knee Length`,
-    'Source' = "Study",
+    'Source' = "Study", #grouping variable
     'ID' = as.character(ID),
-    `Weight` = round(Weight * 0.45359237,2)
+    `Weight` = round(Weight * 0.45359237,2), #convert to kg
+    'BMI' = round(Weight/(Stature/1000)^2,2)
   )
 
 # Split sexes and output csv
@@ -113,20 +127,21 @@ write.csv(df_anthros_f, "output/anthros_f.csv", row.names = FALSE)
 
 ```
 # Loading Reference Population Dataset
-To evaluate accommodation within the Bell 206 cockpit, participant measurements must be compared against a broader reference population. In this project, we use the *2012 Canadian Forces Anthropometric Survey (CFAS)* as the primary population dataset. The CFAS provides a comprehensive and high-resolution snapshot of modern military anthropometry, including key cockpit-relevant dimensions such as stature, sitting height, limb lengths, and functional reaches.
+To evaluate accommodation within the Bell 206 cockpit, participant measurements must be compared against a broader reference population. In this project, we use the *2012 Canadian Forces Anthropometric Survey (CFAS)* as the primary population dataset. The CFAS provides a comprehensive snapshot of modern military anthropometry, including key cockpit-relevant dimensions such as sitting heights, limb lengths, and functional reaches.
 
 The reference dataset enables both univariate and multivariate comparisons to estimate the percentage of the military population that would be expected to achieve successful accommodation under defined operational criteria. While CFAS is used in this instance due to its relevance and completeness, the framework is designed to accept any alternative anthropometric dataset that includes the necessary variables. This modularity makes the analysis portable and adaptable for use with datasets such as ANSUR II, or CAESAR.
-
-We also add the composite *combo leg* variable that sums buttock-knee length, knee height - sitting, that more accurately reflects leg reach and clearance constraints in a seated posture than any individual measure alone.
 
 The dataset is typically stored locally in .csv and read into the R environment as follows:
 
 ```{r}
 #Load Population Dataset
-pop <- read_csv("Data/CFAS_2012.csv",show_col_types = FALSE) %>% dplyr::select(-`ID`,-`...1`)
+pop <- read_csv("Data/CFAS_2012.csv",show_col_types = FALSE) %>% dplyr::select(-`...1`)
 pop <- pop %>%
-  mutate(Source = "CFAS 2012")%>%
-  mutate('Combo Leg' = `Knee Height - Sitting` + `Buttock-Knee Length`)
+  mutate(
+    Source = "CFAS 2012",
+    'Combo Leg' = `Knee Height - Sitting` + `Buttock-Knee Length`,
+    'BMI' = round(Weight/(Stature/1000)^2,2)
+    )
 pop_m <- pop %>% filter(Sex== "Male", Service == "RCAF")
 pop_f <- pop %>% filter(Sex== "Female")
 
@@ -140,7 +155,7 @@ pop_f <- pop_f %>% dplyr::select(all_of(common_columns)) %>% dplyr::select(-'Sex
 # Univariate Summary Tables: Raw and Percentile Comparisons
 To support initial inspection of the participant dataset, this section generates univariate summary statistics for key anthropometric variables. These include both:
 
-- Raw values (e.g., in millimetres), useful for direct dimensional interpretation and cockpit design reference, and
+- Raw values (e.g., in millimetres, or kg), useful for direct dimensional interpretation and cockpit design reference, and
 
 - Percentile rankings (%), computed by comparing each participant’s measurements against the appropriate reference population.
 
@@ -153,15 +168,17 @@ Care must be taken when selecting the appropriate population subset for percenti
 
 - Sex Stratification: Male and female data should always be assessed separately due to fundamental differences in body size distributions.
 
-- CFAS 2012 Sample Limitations: While the 2012 Canadian Forces Anthropometric Survey (CFAS) provides sufficient sample size to support stratified analysis of male subjects across military branches (Navy, Army, Air Force), the female sample sizes were not large enough within branches to yield statistically significant stratified comparisons. Therefore, female participant percentiles should only be assessed against the total female military population from the combined CFAS dataset.
+- CFAS 2012 Sample Limitations: While the CFAS provides sufficient sample size to support stratified analysis of male subjects across military branches (Navy, Army, Air Force), the female sample sizes were not large enough within branches to yield statistically significant stratified comparisons. Therefore, female participant percentiles should only be assessed against the total female militaryfrom the combined entire Canadian Armed Forces (CAF).
 
 - The output tables below provide summary statistics for each participant's measurements in both raw and percentile formats. These tables serve as a diagnostic tool to identify individuals who may fall outside accommodation envelopes for specific cockpit features.
 
 ```{r}
-sample_scaled_pop <- scale_sample_based_on_population(df_anthros_m,pop_m %>% dplyr::select(-'Source',-Weight))
+sample_scaled_pop <- scale_sample_based_on_population(df_anthros_m,pop_m %>% dplyr::select(-'Source',-Weight,-ID))
 scaled_sample <- sample_scaled_pop$scaled_sample
 sample_percentile <- sample_scaled_pop$sample_percentiles
 sample_anthro_percentile <- percentile_table(df_anthros_m,sample_percentile)
+write.csv(df_anthros_m, "output/antho_m.csv", row.names = FALSE)
+write.csv(sample_percentile, "output/percentile_m.csv", row.names = FALSE)
 write.csv(sample_anthro_percentile, "output/anthro_percentile_m.csv", row.names = FALSE)
 
 anthro_summary_m <- sample_anthro_percentile 
@@ -178,10 +195,12 @@ kable(block_2, caption = "Male Block 2: Variables 6–10")
 kable(block_3, caption = "Male Block 3: Variables 11–15")
 kable(block_4, caption = "Male Block 4: Variables 16–20")
 
-sample_scaled_pop <- scale_sample_based_on_population(df_anthros_f,pop_f%>% dplyr::select(-'Source',-Weight))
+sample_scaled_pop <- scale_sample_based_on_population(df_anthros_f,pop_f%>% dplyr::select(-'Source',-Weight,-ID))
 scaled_sample <- sample_scaled_pop$scaled_sample
 sample_percentile <- sample_scaled_pop$sample_percentiles
 sample_anthro_percentile <- percentile_table(df_anthros_f,sample_percentile)
+write.csv(df_anthros_f, "output/antho_f.csv", row.names = FALSE)
+write.csv(sample_percentile, "output/percentile_f.csv", row.names = FALSE)
 write.csv(sample_anthro_percentile, "output/anthro_percentile_f.csv", row.names = FALSE)
 
 anthro_summary_f <- sample_anthro_percentile
@@ -220,14 +239,14 @@ ggplot(data_m, aes(x = `Combo Leg`, y = `Sitting Height`)) +
   geom_label(
     data = clean_m %>% as.data.frame(),
     aes(label = rownames(clean_m), x = `Combo Leg`, y = `Sitting Height`),
-    vjust = -0.5, hjust = 1, size = 3
+    vjust = -0.5, hjust = 1
   ) +
 
   # Ellipse around all points
   stat_ellipse(level = 0.9, color = 'red') +
 
   # Titles and theme
-  labs(title = "Female Participant Data vs. CFAS 2012 (90% CI)") +
+  labs(title = "Male Participant Data vs. CFAS 2012:Male RCAF (90% CI)") +
   theme_minimal()
 
 data_f <- rbind(pop_f, clean_f)
@@ -239,31 +258,21 @@ ggplot(data_f, aes(x = `Combo Leg`, y = `Sitting Height`)) +
   geom_label(
     data = clean_f %>% as.data.frame(),
     aes(label = rownames(clean_f), x = `Combo Leg`, y = `Sitting Height`),
-    vjust = -0.5, hjust = 1, size = 3
+    vjust = -0.5, hjust = 1
   ) +
 
   # Ellipse around all points
   stat_ellipse(level = 0.9, color = 'red') +
 
   # Titles and theme
-  labs(title = "Female Participant Data vs. CFAS 2012 (90% CI)") +
+  labs(title = "Female Participant Data vs. CFAS 2012:Female CAF (90% CI)") +
   theme_minimal()
 
 
 ```
 
 # Principal Component Analysis: Core Six Measures
-To further explore the multivariate structure of anthropometric variability relevant to cockpit fit, this section applies Principal Component Analysis (PCA) using the six most critical cockpit-relevant body dimensions—commonly mentioned earlier. Principal Component 1 and 2 of the core six measures accounts for ~85% of the variability of the underlying dataset and is sufficient for accommodation modelling purposes. For this reason, we can discard the remaining principle components and apply a varimax rotation to the retained PC1 and PC2 loadings to improve the interpretability of the results.
-
-These dimensions capture the major axes of cockpit interaction: overall size and torso:limb proportion. By performing PCA on the reference population (e.g., CFAS), we identify the principal axes along which body proportions vary, reducing redundancy and emphasizing body shape over raw size.
-
-Each participant’s anthropometric profile is then projected into this reduced PCA space, allowing us to plot them relative to the broader population distribution. This enables:
-
-- Identification of outlier body types (e.g., extreme limb-to-torso proportions),
-
-- Assessment of whether the participant sample adequately spans a target accommodation level (ellipse boundary), and
-
-- Support for subject selection in physical fit validation, ensuring inclusion of worst-case accommodation points.
+To further explore the multivariate structure of anthropometric variability relevant to cockpit fit, this section applies Principal Component Analysis (PCA) using the six most critical cockpit-relevant body dimensions—commonly mentioned earlier.  PCA combines the variables in a way that maximizes the variance of the PC1 as evident by the higher Sums of Squares of the `loadings`, which is good for dimension reduction but bad for interpretability. If we study the absolute values of the weights for PC1, we see that all values of PC1 are ~0.5. The same is true of PC2. By using the absolute values, it is impossible to tell which variables are associated to PC1 or PC2.
 
 ```{r}
 
@@ -296,6 +305,100 @@ study_pca <- study_pca %>%
 
 scaled_data <- scale(pop_pca) # Standardize the population data (mean = 0, SD = 1)
 
+pca_data_no_rotation <- principal(scaled_data,nfactors=2,covar=TRUE,rotate="none")
+
+print(pca_data_no_rotation$loadings)
+weights_no_rotation <- pca_data_no_rotation$weights %>% as.data.frame()
+
+ggplot(weights_no_rotation, aes(x = PC1, y = PC2))+geom_point()+
+  scale_x_continuous(limits = c(-1,1)) +  # Define x-axis limits
+  scale_y_continuous(limits = c(-1,1)) +  # Define y-axis limits
+  geom_vline(xintercept = 0, color = "black", linetype = "dotted") +  # Vertical line for y-axis
+  geom_hline(yintercept = 0, color = "black", linetype = "dotted") +  # Horizontal line for x-axis
+  theme_minimal() + # Minimal theme for cleaner appearance
+  geom_text(aes(label = rownames(weights_no_rotation)), vjust = 1.5, hjust = -0.5, size = 3)   # Text labels with row 
+
+
+```
+
+
+
+
+Principal Component 1 and 2 of the core six measures accounts for ~85% of the variability of the underlying dataset and is sufficient for accommodation modelling purposes.  Using the previously discussed logic, we can discard the remaining principle components and apply a varimax rotation to the retained PC1 and PC2 loadings to improve the interpretability of the results. We see that the weights of the factors within RC1 and RC2 are closer to 1 or 0. This is called the Varimax rotation. Note that the cumulative variance retained by R1 and R2 is the same as the rotated pca, but the sums of squares of both RC1 and RC2 more equal.
+```{r}
+
+pca_data <- principal(scaled_data,nfactors=2,covar=TRUE,rotate="varimax")
+
+weights_varimax <- pca_data$weights %>% as.data.frame()
+print(pca_data$loadings)
+
+ggplot(weights_varimax, aes(x = RC1, y = RC2))+geom_point()+
+  scale_x_continuous(limits = c(-1,1)) +  # Define x-axis limits
+  scale_y_continuous(limits = c(-1,1)) +  # Define y-axis limits
+  geom_vline(xintercept = 0, color = "black", linetype = "dotted") +  # Vertical line for y-axis
+  geom_hline(yintercept = 0, color = "black", linetype = "dotted") +  # Horizontal line for x-axis
+  theme_minimal() + # Minimal theme for cleaner appearance
+  geom_text(aes(label = rownames(weights_varimax)), vjust = 1.5, hjust = -0.5, size = 3)   # Text labels with row 
+
+```
+
+These new rotated dimensions capture the major axes of cockpit interaction. RC1 loads on torso measurements whereas R2 loads on limb measurements. By performing PCA on the reference population (e.g., CFAS), we identify the principal axes along which body proportions vary, reducing redundancy and emphasizing body shape over raw size. 
+
+Each participant’s anthropometric profile is then projected into this retated PCA space, allowing us to plot them relative to the broader population distribution. This enables:
+
+- Identification of outlier body types (e.g., extreme limb-to-torso proportions),
+
+- Assessment of whether the participant sample adequately spans a target accommodation level (ellipse boundary), and
+
+- Support for subject selection in physical fit validation, ensuring inclusion of worst-case accommodation points.
+
+
+
+```{r}
+
+study_scaled <- ScaleToPopulation(study_pca,pop_pca) %>% as.matrix() # scale study data per population
+study_scores <- ScaleToPC(study_scaled,pca_data$weights) # calculate PC scores for study data
+
+ellipse_frame <- AccommodationEllipse(90) # set accommodation ellipse level
+
+pca_plot <- ggplot() +
+   geom_point(data = pca_data$scores %>% as.data.frame(), aes(x = RC1, y = RC2)) +
+   geom_point(data = study_scores %>% as.data.frame(), aes(x = RC1, y = RC2), shape = 21,color="blue", size = 4) +
+   geom_path(data = ellipse_frame, aes(x=ellipse_frame[,1], y=ellipse_frame[,2]), color='red')+
+  geom_label(data = study_scores %>% as.data.frame(), aes(label = rownames(study_scores),x = RC1,y=RC2), color = "blue", vjust = -0.5, hjust = 1)+
+  
+  scale_x_continuous(limits = c(-3, 3)) +  # Define x-axis limits
+  scale_y_continuous(limits = c(-3, 3))+   # Define y-axis limits
+     labs(
+         x = "RC1",
+         y = "RC2",
+         title = "PC Scores(Varimax): Study vs. Population (Male)",
+         subtitle = "Black: CFAS 2012, Red: 90% Accommodation Boundary"
+     )+
+    theme_minimal() # Minimal theme for cleaner appearance
+      
+print(pca_data$loadings)
+print(pca_plot)
+
+# Define study vs pop data - Feamle
+
+pop_pca <- data_f
+study_pca <- clean_f
+
+pop_pca <- pop_pca %>%
+  dplyr::select(pca_vars
+  ) %>%
+  na.omit()
+
+study_pca <- study_pca %>%
+  dplyr::select(pca_vars) %>%
+  na.omit()
+
+# Perform PCA - Female
+
+scaled_data <- scale(pop_pca) # Standardize the population data (mean = 0, SD = 1)
+
+pca_data_none <- principal(scaled_data,nfactors=2,covar=TRUE,rotate="none")
 pca_data <- principal(scaled_data,nfactors=2,covar=TRUE,rotate="varimax")
 
 study_scaled <- ScaleToPopulation(study_pca,pop_pca) %>% as.matrix() # scale study data per population
@@ -304,18 +407,18 @@ study_scores <- ScaleToPC(study_scaled,pca_data$weights) # calculate PC scores f
 ellipse_frame <- AccommodationEllipse(90) # set accommodation ellipse level
 
 pca_plot <- ggplot() +
-   geom_point(data = pca_data$scores %>% as.data.frame(), aes(x = RC1, y = RC2), size = 1) +
-   geom_point(data = study_scores %>% as.data.frame(), aes(x = RC1, y = RC2), shape = 21, size = 3,color="blue") +
+   geom_point(data = pca_data$scores %>% as.data.frame(), aes(x = RC1, y = RC2)) +
+   geom_point(data = study_scores %>% as.data.frame(), aes(x = RC1, y = RC2), shape = 21,color="blue", size = 4) +
    geom_path(data = ellipse_frame, aes(x=ellipse_frame[,1], y=ellipse_frame[,2]), color='red')+
-  geom_label(data = study_scores %>% as.data.frame(), aes(label = rownames(study_scores),x = RC1,y=RC2), color = "blue", vjust = -0.5, hjust = 1, size = 3)+
+  geom_label(data = study_scores %>% as.data.frame(), aes(label = rownames(study_scores),x = RC1,y=RC2), color = "blue", vjust = -0.5, hjust = 1)+
   
   scale_x_continuous(limits = c(-3, 3)) +  # Define x-axis limits
   scale_y_continuous(limits = c(-3, 3))+   # Define y-axis limits
      labs(
          x = "RC1",
          y = "RC2",
-         title = "PC Scores(Varimax): Study vs. Population (Male)",
-         subtitle = "Black: Population, Red: 90% Accommodation"
+         title = "PC Scores(Varimax): Study vs. Population (Female)",
+         subtitle = "Black: CFAS 2012, Red: 90% Accommodation Boundary"
      )+
     theme_minimal() # Minimal theme for cleaner appearance
       
@@ -351,7 +454,19 @@ df_controls <- read_sheet("https://docs.google.com/spreadsheets/d/1QnLAoSWwkXrCx
 
 # Head Clearance
 
-A linear model was used to examine how body dimensions relate to overhead clearance in the Bell 206 cockpit. The analysis found that sitting height is a strong predictor of available head clearance, with taller individuals generally having less space overhead. Waist depth was also included in the model but did not show a strong individual effect. The model explains nearly all of the variation in head clearance across participants. Full model results are included in the output below.
+A linear model was used to examine how body dimensions relate to overhead clearance in the Bell 206 cockpit. As expected, the analysis found that sitting height is a strong predictor of available head clearance, with taller individuals having less space overhead. The relationship is intuitive with head clearance reducing proportionally with sitting height. The model explains nearly all of the variation in head clearance across participants. We calculate the theoretical maximum sitting height with zero clearance. We also plot predicted vs. actual head clearance against an arbitrary functional requirement criterion. Finally, we use the model to predict the accommodation level of males and female target populations.
+
+$$
+\text{Head Clearance} = 1043.36 - 1.03\cdot \text{Sitting Height}
+$$
+When we account for a 38 mm thick helmet and predict the accommodation level of the target female and male populations within the 2012 CFAS, we find that 99% of females and 91% of males will have sufficient head clearance in the Bell 206. Assuming zero clearance between a helmet and the overhead panel is acceptable, the maximum sitting height is 
+$$
+\text{Sitting Height} = \frac{\text{38 mm}-{1043.36}}{\text-1.03}
+$$
+$$
+\text{Max Sitting Height} = \text{976 mm}
+$$
+
 
 ```{r}
 
@@ -389,9 +504,7 @@ ggplot(df, aes(x = `Sitting Height`, y = head_clear_mm)) +
 
 # Fit linear model
 
-model <- lm(head_clear_mm ~ `Sitting Height` + 
-              `Waist Depth` +
-              `Weight`, data = df)
+model <- lm(head_clear_mm ~ `Sitting Height`, data = df)
 step_model <- stepAIC(model, direction = "both")
 summary(step_model)
 
@@ -440,13 +553,29 @@ ggplot(pred_frame, aes(x = predicted, y = actual)) +
   theme(
   plot.margin = margin(t = 10, r = 50, b = 10, l = 10)
 ) +
+  scale_x_continuous(limits = c(0,150)) +  # Define x-axis limit
+  geom_hline(yintercept = 38, linetype = "dashed", color = "red") + # helmet clearance 38 mm (1.5 in)
+  annotate("text", x = Inf, y = 38, label = "Accommodated (helmet)", hjust = 1.1, vjust = -0.5, color = "blue")+
+  annotate("text", x = Inf, y = 38, label = "Dissaccommodated (helmet)", hjust = 1.1, vjust = 1.5, color = "red")+
   theme_minimal()
 
+df_new <- pop
+df_new$y_predicted <- predict(model, newdata = pop)
+
+df_summary <- df_new %>%
+  mutate(predicted_class = ifelse(y_predicted < 38, "Dissaccommodated", "Accommodated")) %>%
+  group_by(Sex, predicted_class) %>% drop_na %>%
+  count() %>%
+  group_by(Sex) %>%
+  mutate(percentage = round(100 * n / sum(n), 1)) %>%
+  ungroup()
+
+kable(df_summary, caption = "Accommodation of Head Clearance (Helmet Thickness 38 mm)")
 ```
 
 # Over the Nose Vision
 
-A linear model was developed to explore how body dimensions influence over-the-nose vision in the Bell 206. The analysis found that eye height, sitting is strongly associated with ONV angle — individuals with taller seated eye heights tend to have better downward visibility. While waist depth was included in the model to account for the horizontal offset of the shoulder from the seat back, it did not show a strong statistical effect. Overall, the model explains a high proportion of the variation in ONV among participants. Full model details and statistics are provided in the code and output below.
+A linear model was developed to explore how body dimensions influence over-the-nose vision in the Bell 206. The analysis found that eye height, sitting is strongly associated with ONV angle — individuals with taller seated eye heights tend to have better downward visibility. While waist depth was included in the model to account for the horizontal offset of the shoulder from the seat back, it did not show a strong statistical effect. Overall, the model explains a high proportion of the variation in ONV among participants. Full model details and statistics are provided in the code and output below. We also plot predicted vs. actual ONV against an arbitrary functional requirement criterion. Finally, we use the model to predict the accommodation level of males and female target populations.
 
 ```{r}
 
@@ -484,8 +613,7 @@ ggplot(df, aes(x = `Eye Height - Sitting`, y = onv_deg)) +
 
 # Fit linear model
 
-model <- lm(onv_deg ~ `Eye Height - Sitting` + 
-              `Waist Depth`, data = df)
+model <- lm(onv_deg ~ `Eye Height - Sitting`, data = df)
 step_model <- stepAIC(model, direction = "both")
 summary(step_model)
 
@@ -537,9 +665,24 @@ ggplot(pred_frame, aes(x = predicted, y = actual)) +
   theme(
   plot.margin = margin(t = 10, r = 50, b = 10, l = 10)
 ) +
+  scale_y_continuous(limits = c(-25,0)) +
+  geom_hline(yintercept = -12, linetype = "dashed", color = "red") + # ONV requirement (arbitrary -12 degree requirement)+
+  annotate("text", x = Inf, y = -12, label = "Dissaccommodated", hjust = 1.1, vjust = -0.5, color = "red")+
+  annotate("text", x = Inf, y = -12, label = "Accommodated", hjust = 1.1, vjust = 1.5, color = "blue")+
+  
   theme_minimal()
 
+df_new$y_predicted <- predict(model, newdata = df_new)
 
+df_summary <- df_new %>%
+  mutate(predicted_class = ifelse(y_predicted > -12, "Dissaccommodated", "Accommodated")) %>%
+  group_by(Sex, predicted_class) %>%
+  count() %>%
+  group_by(Sex) %>%
+  mutate(percentage = round(100 * n / sum(n), 1)) %>%
+  ungroup()
+
+kable(df_summary, caption = "Accommodation of Over the Nose Vision (-12 deg)")
 ```
 
 # Shin Clearance
@@ -548,11 +691,9 @@ Shin clearance was assessed using the minimum measured distance between the part
 
 Initial Pearson correlation analysis showed a strong negative correlation between Combo Leg Length and shin clearance (r = -0.95, *p* < 0.001), indicating that individuals with longer lower limbs are more likely to experience reduced clearance.
 
-A stepwise linear regression confirmed that Combo Leg Length alone was the most predictive variable. The final model explained over 90% of the variance in shin clearance (*R²* = 0.91), with each additional millimetre of Combo Leg associated with a 0.39 mm decrease in clearance. Other candidate predictors, including Buttock-Knee Length and rudder pedal displacement, did not significantly improve model performance and were removed during model selection.
+A stepwise linear regression confirmed that Combo Leg Length alone was the most predictive variable. The final model explained over 90% of the variance in shin clearance (*R²* = 0.91), with each additional millimetre of Combo Leg associated with a 0.39 mm decrease in clearance. Other candidate predictors, including Buttock-Knee Length and rudder pedal displacement, did not significantly improve model performance and were removed during model selection. We also plot predicted vs. actual clearance against an arbitrary functional requirement criterion. Finally, we use the model to predict the accommodation level of males and female target populations.
 
-We also found that most participants experienced minimum clearance to their left shin with the right pedal depressed, while some experience minimum clearance when pedals neutral. Furthermost, it is believed that foot length may be a contributing factor as this effects the position of the anckle joint.
-
-This result supports the use of Combo Leg as a proxy variable when assessing lower-limb accommodation in static cockpit configurations such as the Bell 206.
+We also found that most participants experienced minimum clearance to their left shin with the right pedal depressed, while some experience minimum clearance when pedals neutral. Furthermost, it is believed that foot length may be a contributing factor as this effects the position of the anckle joint. This result supports the use of Combo Leg as a proxy variable when assessing lower-limb accommodation in static cockpit configurations such as the Bell 206. 
 
 ```{r}
 
@@ -596,12 +737,22 @@ ggplot(df, aes(x = `Combo Leg`, y = min_clearance)) +
 
   theme_minimal()
 
+# Rudder position model
+
+model_rudder <- lm(rudder_mm ~ `Buttock-Knee Length` +
+              `Combo Leg` + `Knee Height - Sitting`, data = df)
+step_model_rudder <- stepAIC(model_rudder, direction = "both")
+summary(step_model_rudder)
+df_new$rudder_mm <- predict(step_model_rudder, newdata = df_new)
+
+
 # Fit linear model
 
 model <- lm(min_clearance ~ `Buttock-Knee Length` +
               `Combo Leg`+ `Knee Height - Sitting` + rudder_mm, data = df)
 step_model <- stepAIC(model, direction = "both")
 summary(step_model)
+
 
 # Generate predicted values and confidence intervals
 df$min_clearance_predicted <- predict(step_model)
@@ -648,14 +799,142 @@ ggplot(pred_frame, aes(x = predicted, y = actual)) +
   theme(
   plot.margin = margin(t = 10, r = 50, b = 10, l = 10)
 ) +
+  scale_y_continuous(limits = c(0,200)) +
+  geom_hline(yintercept = 38, linetype = "dashed", color = "red") + # ONV requirement (arbitrary -12 degree requirement)+
+  annotate("text", x = Inf, y = 38, label = "Dissaccommodated", hjust = 1.1, vjust = 1.5, color = "red")+
+  annotate("text", x = Inf, y = 38, label = "Accommodated", hjust = 1.1, vjust = -0.5, color = "blue")+
+  
   theme_minimal()
 
+df_new$y_predicted <- predict(model, newdata = df_new)
+
+df_summary <- df_new %>%
+  mutate(predicted_class = ifelse(y_predicted < 38, "Dissaccommodated", "Accommodated")) %>%
+  group_by(Sex, predicted_class) %>%
+  count() %>%
+  group_by(Sex) %>%
+  mutate(percentage = round(100 * n / sum(n), 1)) %>%
+  ungroup()
+
+kable(df_summary, caption = "Accommodation of Shin Clearance (38 mm)")
+```
+# Cylic Clearance to Abdomen
+
+A strong negative correlation was observed between Waist Depth and the aft clearance margin to the cyclic (r = -0.96, p < 0.001), suggesting that as waist depth increases, the available clearance behind the cyclic decreases.
+
+A linear regression model was created to predict aft clearance using three body measurements: Waist Depth, BMI, and Weight. Through model selection, Weight was found to have little added value and was removed. The final model included Waist Depth and BMI as predictors. We also plot predicted vs. actual clearance against an arbitrary functional requirement criterion. Finally, we use the model to predict the accommodation level of males and female target populations.
+
+Although neither predictor reached individual statistical significance, together they explained a substantial portion of the variance in clearance (Adjusted R² = 0.918). The model was statistically significant overall (p < 0.001), suggesting that body size, particularly central mass indicators, is a strong predictor of cyclic-to-abdomen clearance.
+
+The results highlight that bulkier body types (higher waist depth or BMI) may lead to reduced clearance, which could have implications for cockpit fit and safety.
+
+```{r}
+
+# #Join anthros
+
+df <- df_motion %>%
+  left_join(df_anthros %>% mutate(ID = as.numeric(ID)), by = "ID")
+
+
+cor_test_result <- cor.test(df$aft_margin_body_mm, df$`Waist Depth`, method = "pearson")
+cor_value <- round(cor_test_result$estimate, 2)
+
+# Print detailed summary
+print(cor_test_result)
+
+ggplot(df, aes(x = `Waist Depth`, y = aft_margin_body_mm)) +
+  geom_point(size = 3, color = "steelblue") +
+  labs(
+    title = "Cyclic Clearance to Abdomen vs. Waist Depth",
+    subtitle = paste0("Pearson correlation: r = ", cor_value),
+    x = "Waist Depth (mm)",
+    y = "Cyclic / Abdomen Clearnace (mm)"
+  ) +
+  geom_text(
+    data = df %>% as.data.frame(),
+    aes(label = ID, x = `Waist Depth`, y = aft_margin_body_mm),
+    vjust = -1, hjust = 1, size = 3
+  ) +
+# Correlation line with 95% CI
+  geom_smooth(method = "lm", se = TRUE,level = 0.95, color = "blue", linewidth = 0.8) +
+
+  theme_minimal()
+
+# Fit linear model
+
+model <- lm(aft_margin_body_mm ~ `Waist Depth` +
+              BMI + Weight, data = df)
+step_model <- stepAIC(model, direction = "both")
+summary(step_model)
+
+# Generate predicted values and confidence intervals
+df$aft_margin_body_mm_predicted <- predict(step_model)
+pred_frame <- data.frame(
+  predicted = df$aft_margin_body_mm_predicted,
+  actual = df$aft_margin_body_mm,
+  ID = df$ID
+)
+
+# Extract coefficients and R-squared
+coefs <- coef(step_model)
+eq <- paste0(
+  "Cyclic Clearance = ", round(coefs[1], 2),
+  ifelse(coefs[2] < 0, " - ", " + "), abs(round(coefs[2], 2)), " × ", names(coefs)[2]
+)
+
+if (length(coefs) > 2) {
+  for (i in 3:length(coefs)) {
+    eq <- paste0(
+      eq,
+      ifelse(coefs[i] < 0, " - ", " + "), abs(round(coefs[i], 2)), " × ", names(coefs)[i]
+    )
+  }
+}
+
+r_squared <- summary(step_model)$r.squared
+subtitle_text <- paste(eq, sprintf("  |  R² = %.2f", r_squared))
+
+ggplot(pred_frame, aes(x = predicted, y = actual)) +
+  geom_point(size = 3, color = "steelblue") +
+  geom_smooth(method = "lm", se = TRUE, level = 0.95, color = "black", fill = "lightblue", linetype = "solid") +
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "gray") +
+  labs(
+    title = "Predicted vs Actual Cyclic Clearance",
+    subtitle = subtitle_text,
+    x = "Predicted Shin Clearance (mm)",
+    y = "Actual Shin Clearance (mm)"
+  ) +
+  geom_text(
+    data = pred_frame %>% as.data.frame(),
+    aes(label = ID, x = predicted, y = actual),
+    vjust = -1, hjust = 1, size = 3
+  ) +
+  theme(
+  plot.margin = margin(t = 10, r = 50, b = 10, l = 10)
+) +
+  geom_hline(yintercept = 38, linetype = "dashed", color = "red") + # ONV requirement (arbitrary -12 degree requirement)+
+  annotate("text", x = Inf, y = 38, label = "Dissaccommodated", hjust = 1.1, vjust = 1.5, color = "red")+
+  annotate("text", x = Inf, y = 38, label = "Accommodated", hjust = 1.1, vjust = -0.5, color = "blue")+
+  
+  theme_minimal()
+
+
+
+df_summary <- df_new %>%
+  mutate(predicted_class = ifelse(y_predicted > 38, "Dissaccommodated", "Accommodated")) %>%
+  group_by(Sex, predicted_class) %>%
+  count() %>%
+  group_by(Sex) %>%
+  mutate(percentage = round(100 * n / sum(n), 1)) %>%
+  ungroup()
+
+kable(df_summary, caption = "Accommodation of Cyclic to Abdomen Clearance (38 mm)")
 
 ```
 
 # Control Motion
 
-A multivariate linear regression was conducted to explore which anthropometric factors influence the maximum forward position a participant can achieve on the cyclic control while seated in a Zone 1 posture (i.e., upright, no leaning). In this model, 100% represents full forward cyclic travel.
+A multivariate linear regression was conducted to explore which anthropometric factors influence the maximum forward position a participant can achieve on the cyclic control while seated in a Zone 1 posture (i.e., upright, no leaning). In this model, 100% represents full forward cyclic travel. We also plot predicted vs. actual performance against an arbitrary functional requirement criterion. Finally, we use the model to predict the accommodation level of males and female target populations.
 
 ```{r}
 
@@ -751,9 +1030,23 @@ ggplot(pred_frame, aes(x = predicted, y = actual)) +
   theme(
   plot.margin = margin(t = 10, r = 50, b = 10, l = 10)
 ) +
+  geom_hline(yintercept = 75, linetype = "dashed", color = "red") + # ONV requirement (arbitrary -12 degree requirement)+
+  annotate("text", x = Inf, y = 75, label = "Accommodated", hjust = 1.1, vjust = -0.5, color = "blue")+
+  annotate("text", x = Inf, y = 75, label = "Disccommodated", hjust = 1.1, vjust = 1.5, color = "red")+
+  
   theme_minimal()
 
+df_new$y_predicted <- predict(model, newdata = df_new)
 
+df_summary <- df_new %>%
+  mutate(predicted_class = ifelse(y_predicted < 75, "Dissaccommodated", "Accommodated")) %>%
+  group_by(Sex, predicted_class) %>%
+  count() %>%
+  group_by(Sex) %>%
+  mutate(percentage = round(100 * n / sum(n), 1)) %>%
+  ungroup()
+
+kable(df_summary, caption = "Accommodation of Cyclic Control Motion - Zone 1 (75% fwd)")
 
 ```
 
@@ -761,7 +1054,7 @@ ggplot(pred_frame, aes(x = predicted, y = actual)) +
 
 Rudder pedal position is a critical component of lower-body accommodation in cockpit fit mapping. The ability to achieve full rudder deflection—particularly with toe brake actuation—is essential for safe ground handling and coordinated flight. Following Zehner’s (2001) methodology, this section evaluates participants’ ability to meet the functional requirement for full rudder pedal reach with the seat various positions.
 
-The omposite `Combo Leg` variable is reported. The rudder pedals were adjusted to the most forward position that the participant could still achieve full rudder deflection and brake application. Negative values represent a missed reach. 
+The composite `Combo Leg` variable is reported. The rudder pedals were adjusted to the most forward position that the participant could still achieve full rudder deflection and brake application. Negative values represent a missed reach. We also plot predicted vs. actual performance against an arbitrary functional requirement criterion. Finally, we use the model to predict the accommodation level of males and female target populations.
 
 ```{r}
 
@@ -794,6 +1087,7 @@ ggplot(df, aes(x = `Combo Leg`, y = rudder_mm)) +
     x = "Combo Leg (Buttock Knee Length + Knee Height - Sitting) (mm)",
     y = "Maximum Fwd Rudder Carriage Position (mm)"
   ) +
+  scale_x_continuous(limits = c(1090,1125)) +
   geom_text(
     data = df %>% as.data.frame(),
     aes(label = ID, x = `Combo Leg`, y = rudder_mm),
@@ -847,6 +1141,8 @@ ggplot(pred_frame, aes(x = predicted, y = actual)) +
     x = "Predicted Maximum Forward Rudder Carriage Position (mm)",
     y = "Actual Maximum Forward Rudder Carriage Position (mm)"
   ) +
+  scale_y_continuous(limits = c(0,150)) +
+  scale_x_continuous(limits = c(0,150)) +
   geom_text(
     data = pred_frame %>% as.data.frame(),
     aes(label = ID, x = predicted, y = actual),
@@ -857,6 +1153,19 @@ ggplot(pred_frame, aes(x = predicted, y = actual)) +
 ) +
   theme_minimal()
 
+df_new$y_predicted <- predict(model, newdata = df_new)
+
+df_summary <- df_new %>%
+  mutate(predicted_class = ifelse(y_predicted < 0, "Dissaccommodated", "Accommodated")) %>%
+  group_by(Sex, predicted_class) %>%
+  count() %>%
+  group_by(Sex) %>%
+  mutate(percentage = round(100 * n / sum(n), 1)) %>%
+  ungroup()
+
+kable(df_summary, caption = "Accommodation of Reach to Rudder Pedals")
+
+
 
 ```
 
@@ -866,7 +1175,7 @@ ggplot(pred_frame, aes(x = predicted, y = actual)) +
 
 The analysis investigated how well participants could reach the LOW ROTOR RPM push button without leaning (Zone 1 posture). A negative correlation was found between thumbtip reach and the miss distance—how far short the participant’s reach fell. Specifically, individuals with shorter thumbtip reach tended to have larger miss distances. The correlation was statistically significant (r = -0.80, p = 0.016), indicating a strong inverse relationship.
 
-A linear regression model confirmed that thumbtip reach was a significant predictor of reach success. For every additional millimetre of thumbtip reach, the miss distance decreased by approximately 0.32 mm. This single-variable model explained about 65% of the variation in reach performance (R² = 0.65), and adding other variables (such as acromial height) did not improve the model.
+A linear regression model confirmed that thumbtip reach was a significant predictor of reach success. For every additional millimetre of thumbtip reach, the miss distance decreased by approximately 0.32 mm. This single-variable model explained about 65% of the variation in reach performance (R² = 0.65), and adding other variables (such as acromial height) did not improve the model. The control is outside the Zone 1 reach envelope for all male and females.
 
 
 ```{r}
@@ -991,7 +1300,23 @@ ggplot(pred_frame, aes(x = predicted, y = actual)) +
   theme(
   plot.margin = margin(t = 10, r = 50, b = 10, l = 10)
 ) +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "red") + # ONV requirement (arbitrary -12 degree requirement)+
+  annotate("text", x = Inf, y = -12, label = "Dissaccommodated", hjust = 1.1, vjust = -2.5, color = "red")+
+  annotate("text", x = Inf, y = -12, label = "Accommodated", hjust = 1.1, vjust = 0.5, color = "blue")+
+  
   theme_minimal()
+
+df_new$y_predicted <- predict(model, newdata = df_new)
+
+df_summary <- df_new %>%
+  mutate(predicted_class = ifelse(y_predicted > 0, "Dissaccommodated", "Accommodated")) %>%
+  group_by(Sex, predicted_class) %>%
+  count() %>%
+  group_by(Sex) %>%
+  mutate(percentage = round(100 * n / sum(n), 1)) %>%
+  ungroup()
+
+kable(df_summary, caption = "Accommodation of Zone 1 Reach to Low Rotor RPM")
 
 ```
 
@@ -1002,6 +1327,8 @@ The analysis assessed whether body dimensions could predict participants’ abil
 A linear regression model including thumbtip reach and acromial height accounted for about 60% of the variation in miss distance (R² = 0.60). Of the two predictors, thumbtip reach showed a borderline significant contribution (p = 0.058), with each additional millimetre of reach associated with a 0.85 mm reduction in miss distance. Acromial height was not a significant predictor.
 
 These findings suggest that thumbtip reach may still be a relevant measure for reach performance, though the relationship in this case is weaker and less conclusive compared to other controls. Further data may help clarify this relationship.
+
+The control is outside the Zone 1 reach envelope for all male and females
 
 ```{r}
 # Zone 1 - Control Boost
@@ -1089,12 +1416,24 @@ ggplot(pred_frame, aes(x = predicted, y = actual)) +
 ) +
   theme_minimal()
 
+df_new$y_predicted <- predict(model, newdata = df_new)
+
+df_summary <- df_new %>%
+  mutate(predicted_class = ifelse(y_predicted > 0, "Dissaccommodated", "Accommodated")) %>%
+  group_by(Sex, predicted_class) %>%
+  count() %>%
+  group_by(Sex) %>%
+  mutate(percentage = round(100 * n / sum(n), 1)) %>%
+  ungroup()
+
+kable(df_summary, caption = "Accommodation of Zone 1 Reach to Control Boost Toggle Switch")
+
 
 ```
 
 # Boeing 737 Over the Nose Vision
 
-We also took the opportunity to measure the over the nose vision of the Beoing 737 pilot seat which has horizontal and vertical adjustments. Notably, both vertical and horizontal adjustments rotate the seat about an axis and therefore affect both x and y coordinates of the seat reference point. Furthermore, the seat also includes a back rest recline adjustment. For simplicity, ONV were recorded at seat full up/aft, down/aft, and down/fwd. The full up/fwd position was not recorded because it was falsely thought to be inaccessible due to the overall difficulty in adjusting the seat position.
+We also took the opportunity to measure the over the nose vision of the Beoing 737 pilot seat which has horizontal and vertical adjustments. Notably, both vertical and horizontal adjustments rotate the seat about a pivoting arm. Therefore affect vertical and horizontal adjustments change the x and y coordinates of the seat reference point. For simplicity, ONV were recorded at seat full up/aft, down/aft, and down/fwd. The seat also includes a back rest recline adjustment and ONV measurements were taken in the most upright and most recline tilt settings. The full up/fwd position was not recorded because it was falsely thought to be inaccessible due to the overall difficulty in adjusting the seat position.
 
 ```{r}
 
@@ -1142,7 +1481,7 @@ print(cor_test_result)
 ggplot(df_UpAft, aes(x = `Eye Height - Sitting`, y = onv_deg)) +
   geom_point(size = 3, color = "steelblue") +
   labs(
-    title = "External Vision vs. Eye Height (Sitting)",
+    title = "Over the Nose Vision vs. Eye Height Sitting (Up, Aft)",
     subtitle = paste0("Pearson correlation: r = ", cor_value),
     x = "Eye Height - Sitting (mm)",
     y = "External Vision Over the Nose (degrees)"
@@ -1154,6 +1493,9 @@ ggplot(df_UpAft, aes(x = `Eye Height - Sitting`, y = onv_deg)) +
   ) +
 # Correlation line with 95% CI
   geom_smooth(method = "lm", se = TRUE,level = 0.95, color = "blue", linewidth = 0.8) +
+  geom_hline(yintercept = 13, linetype = "dashed", color = "red") + # ONV requirement (arbitrary -12 degree requirement)+
+  annotate("text", x = Inf, y = 13, label = "Accommodated", hjust = 1.1, vjust = -0.5, color = "blue")+
+  annotate("text", x = Inf, y = 13, label = "Disccommodated", hjust = 1.1, vjust = 1.5, color = "red")+
   
   theme_minimal()
 
@@ -1220,9 +1562,49 @@ ggplot(pred_frame, aes(x = predicted, y = actual, color = seat_pos)) +
   theme(
   plot.margin = margin(t = 10, r = 80, b = 10, l = 10)
 ) +
+  geom_hline(yintercept = 13, linetype = "dashed", color = "red") + # ONV requirement (arbitrary -12 degree requirement)+
+  annotate("text", x = Inf, y = 13, label = "Accommodated", hjust = 1.1, vjust = -0.5, color = "blue")+
+  annotate("text", x = Inf, y = 13, label = "Disccommodated", hjust = 1.1, vjust = 1.5, color = "red")+
+  
   theme_minimal()
 
 subtitle_text
+
+# Create 4 configurations per participant
+df_expanded <- bind_rows(
+  df_new %>% mutate(seat_up_step = 0, seat_fwd_step = 0, seat_config = "down_aft"),
+  df_new %>% mutate(seat_up_step = 1, seat_fwd_step = 1, seat_config = "up_fwd"), # no data was collected from this seat setting to inform the model
+  df_new %>% mutate(seat_up_step = 1, seat_fwd_step = 0, seat_config = "up_aft"),
+  df_new %>% mutate(seat_up_step = 0, seat_fwd_step = 1, seat_config = "down_fwd")
+)
+
+df_expanded$y_predicted <- predict(model, newdata = df_expanded)
+
+df_summary <- df_expanded %>%
+  mutate(predicted_class = ifelse(y_predicted < 14, "Dissaccommodated", "Accommodated")) %>%
+  group_by(Sex, predicted_class) %>%
+  count() %>%
+  group_by(Sex) %>%
+  mutate(percentage = round(100 * n / sum(n), 1)) %>%
+  ungroup()
+
+
+df_summary <- df_expanded %>%
+  group_by(ID, Sex) %>%  
+  summarise(
+    any_accommodated = any(y_predicted > 13), # functional requirement
+    .groups = "drop"
+  ) %>%
+  mutate(
+    predicted_class = ifelse(any_accommodated, "Accommodated", "Dissaccommodated")
+  ) %>% 
+  group_by(Sex, predicted_class) %>%
+  count() %>% 
+  group_by(Sex) %>%
+  mutate(percentage = round(100 * n / sum(n), 1)) %>%
+  ungroup()
+
+kable(df_summary, caption = "Accommodation of Boeing 737 ONV (13 degrees)")
 
 ```
 
