@@ -634,10 +634,10 @@ ggsave("plots/Predicted vs. Actual Head Clearance.png", plot = last_plot(), widt
 
 
 df_new <- pop
-df_new$y_predicted <- predict(model, newdata = pop)
+df_new$head_clear_predicted <- predict(step_model, newdata = pop)
 
 df_summary <- df_new %>%
-  mutate(predicted_class = ifelse(y_predicted < 43, "Dissaccommodated", "Accommodated")) %>%
+  mutate(predicted_class = ifelse(head_clear_predicted < 43, "Dissaccommodated", "Accommodated")) %>%
   group_by(Sex, predicted_class) %>% drop_na %>%
   count() %>%
   group_by(Sex) %>%
@@ -750,10 +750,10 @@ ggplot(pred_frame, aes(x = predicted, y = actual)) +
 ggsave("plots/Predicted vs. Actual Over the Nose Vision.png", plot = last_plot(), width = 9.5, height = 5, dpi = 200,bg="white")
 
 
-df_new$y_predicted <- predict(model, newdata = df_new)
+df_new$ONV_predicted <- predict(step_model, newdata = df_new)
 
 df_summary <- df_new %>%
-  mutate(predicted_class = ifelse(y_predicted > -12, "Dissaccommodated", "Accommodated")) %>%
+  mutate(predicted_class = ifelse(ONV_predicted > -12, "Dissaccommodated", "Accommodated")) %>%
   group_by(Sex, predicted_class) %>%
   count() %>%
   group_by(Sex) %>%
@@ -815,13 +815,6 @@ ggplot(df, aes(x = `Combo Leg`, y = min_clearance)) +
 
   theme_minimal()
 
-# Rudder position model
-
-model_rudder <- lm(rudder_mm ~ `Buttock-Knee Length` +
-              `Combo Leg` + `Knee Height - Sitting`, data = df)
-step_model_rudder <- stepAIC(model_rudder, direction = "both")
-summary(step_model_rudder)
-df_new$rudder_mm <- predict(step_model_rudder, newdata = df_new)
 
 
 # Fit linear model
@@ -884,10 +877,10 @@ ggplot(pred_frame, aes(x = predicted, y = actual)) +
 
 ggsave("plots/Predicted vs. Actual Shin Clearance.png", plot = last_plot(), width = 9.5, height = 5, dpi = 200,bg="white")
 
-df_new$y_predicted <- predict(model, newdata = df_new)
+df_new$shin_clear_predicted <- predict(step_model, newdata = df_new)
 
 df_summary <- df_new %>%
-  mutate(predicted_class = ifelse(y_predicted < 38, "Dissaccommodated", "Accommodated")) %>%
+  mutate(predicted_class = ifelse(shin_clear_predicted < 38, "Dissaccommodated", "Accommodated")) %>%
   group_by(Sex, predicted_class) %>%
   count() %>%
   group_by(Sex) %>%
@@ -992,10 +985,10 @@ ggsave("plots/Predicted vs. Actual Cyclic Abdomen Clearance.png", plot = last_pl
 
 # Predicted values for CFAS populations are not possible because CFAS did not report on Waist Depth.
 
-df_new$y_predicted <- predict(model, newdata = df_new)
+df_new$cyclic_clear_predicted <- predict(step_model, newdata = df_new)
 
 df_summary <- df_new %>%
-  mutate(predicted_class = ifelse(y_predicted < 38, "Dissaccommodated", "Accommodated")) %>%
+  mutate(predicted_class = ifelse(cyclic_clear_predicted < 38, "Dissaccommodated", "Accommodated")) %>%
   group_by(Sex, predicted_class) %>%
   count() %>%
   group_by(Sex) %>%
@@ -1111,17 +1104,17 @@ ggplot(pred_frame, aes(x = predicted, y = actual)) +
 ggsave("plots/Predicted vs. Actual Zone 1 Cyclic Fwd Reach.png", plot = last_plot(), width = 9.5, height = 5, dpi = 200,bg="white")
 
 
-df_new$y_predicted <- predict(model, newdata = df_new)
+df_new$cyclic_zone1_predicted <- predict(step_model, newdata = df_new)
 
 df_summary <- df_new %>%
-  mutate(predicted_class = ifelse(y_predicted < 60, "Dissaccommodated", "Accommodated")) %>%
+  mutate(predicted_class = ifelse(cyclic_zone1_predicted < 60, "Dissaccommodated", "Accommodated")) %>%
   group_by(Sex, predicted_class) %>%
   count() %>%
   group_by(Sex) %>%
   mutate(percentage = round(100 * n / sum(n), 1)) %>%
   ungroup()
 
-kable(df_summary, caption = "Accommodation of Cyclic Control Motion - Zone 1 (75% fwd)")
+kable(df_summary, caption = "Accommodation of Cyclic Control Motion - Zone 1 (60% fwd)")
 
 ```
 
@@ -1230,10 +1223,10 @@ ggplot(pred_frame, aes(x = predicted, y = actual)) +
 ggsave("plots/Predicted vs. Actual Reach to Rudder Pedals.png", plot = last_plot(), width = 9.5, height = 5, dpi = 200,bg="white")
 
 
-df_new$y_predicted <- predict(model, newdata = df_new)
+df_new$rudder_predicted <- predict(step_model, newdata = df_new)
 
 df_summary <- df_new %>%
-  mutate(predicted_class = ifelse(y_predicted < 0, "Dissaccommodated", "Accommodated")) %>%
+  mutate(predicted_class = ifelse(rudder_predicted < 0, "Dissaccommodated", "Accommodated")) %>%
   group_by(Sex, predicted_class) %>%
   count() %>%
   group_by(Sex) %>%
@@ -1384,10 +1377,10 @@ ggplot(pred_frame, aes(x = predicted, y = actual)) +
 ggsave("plots/Predicted vs. Actual Zone 1 LOW ROTOR.png", plot = last_plot(), width = 9.5, height = 5, dpi = 200,bg="white")
 
 
-df_new$y_predicted <- predict(model, newdata = df_new)
+df_new$rpm_zone1_predicted <- predict(step_model, newdata = df_new)
 
 df_summary <- df_new %>%
-  mutate(predicted_class = ifelse(y_predicted > 0, "Dissaccommodated", "Accommodated")) %>%
+  mutate(predicted_class = ifelse(rpm_zone1_predicted > 0, "Dissaccommodated", "Accommodated")) %>%
   group_by(Sex, predicted_class) %>%
   count() %>%
   group_by(Sex) %>%
@@ -1496,10 +1489,10 @@ ggplot(pred_frame, aes(x = predicted, y = actual)) +
 ggsave("plots/Predicted vs. Actual Zone 1 CONTROL BOOST.png", plot = last_plot(), width = 9.5, height = 5, dpi = 200,bg="white")
 
 
-df_new$y_predicted <- predict(model, newdata = df_new)
+df_new$ctrl_boost_predicted <- predict(step_model, newdata = df_new)
 
 df_summary <- df_new %>%
-  mutate(predicted_class = ifelse(y_predicted > 0, "Dissaccommodated", "Accommodated")) %>%
+  mutate(predicted_class = ifelse(ctrl_boost_predicted > 0, "Dissaccommodated", "Accommodated")) %>%
   group_by(Sex, predicted_class) %>%
   count() %>%
   group_by(Sex) %>%
@@ -1507,6 +1500,9 @@ df_summary <- df_new %>%
   ungroup()
 
 kable(df_summary, caption = "Accommodation of Zone 1 Reach to Control Boost Toggle Switch")
+
+# write CFAS with predicted performance
+write.csv(df_new, "output/CFAS_predicted.csv", row.names = FALSE)
 
 
 ```
@@ -1661,7 +1657,7 @@ df_expanded <- bind_rows(
   df_new %>% mutate(seat_up_step = 0, seat_fwd_step = 1, seat_config = "down_fwd")
 )
 
-df_expanded$y_predicted <- predict(model, newdata = df_expanded)
+df_expanded$y_predicted <- predict(step_model, newdata = df_expanded)
 
 df_summary <- df_expanded %>%
   group_by(ID, Sex) %>%  
