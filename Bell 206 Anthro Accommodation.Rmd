@@ -28,7 +28,7 @@ The methodological framework used for this study mirrors the structured approach
 
 * Cockpit Mapping: Anthropometric variables were mapped against cockpit features using regression modeling. Accommodation success was evaluated by comparing predicted values—such as eye height or functional reach—against thresholds necessary to operate the helicopter safely.
 
-* Predicting Population-Level Accommodation: Using population percentile data and bivariate regression models, we estimated the percentage of the population likely to be accommodated within the existing cockpit geometry.
+* Predicting Population-Level Accommodation: Using population percentile data and regression models, we estimated the percentage of the population likely to be accommodated within the existing cockpit geometry.
 
 Each of these phases is documented in this R Markdown file, with corresponding code, figures, and summaries provided inline.
 
@@ -104,7 +104,7 @@ $$
 $$
 ```{r}
 # Import survey data
-df_anthros <- read_sheet("https://docs.google.com/spreadsheets/d/1ivDEK3W4lSWOvc1rr_CDwM9fo-UZnU5sg26lxeQjKNU/edit?gid=0#gid=0")%>% as.data.frame()
+df_anthros <- read_sheet("https://docs.google.com/spreadsheets/d/1ivQo0QNx1Zyjlg1WvXoPJoW9RorD8KYH4fc5BYkQhO4/edit?gid=0#gid=0")%>% as.data.frame()
 rownames(df_anthros) <- df_anthros$ID
 
 
@@ -269,10 +269,64 @@ ggplot(data_f, aes(x = `Combo Leg`, y = `Sitting Height`)) +
   theme_minimal()
 
 
+f_sex <- clean_f %>%
+  mutate(
+    Sex = "F",
+    Group = "Study"
+  )
+
+m_sex <- clean_m %>%
+  mutate(
+    Sex = "M",
+    Group = "Study"
+  )
+
+pop_m_sex <- pop_m %>%
+  mutate(
+    Sex = "M",
+    Group = "Male"
+  )
+
+pop_f_sex <- pop_f %>%
+  mutate(
+    Sex = "F",
+    Group = "Female"
+  )
+
+clean_combined <- rbind(pop_f_sex,pop_m_sex,m_sex,f_sex)
+study_df = rbind(m_sex,f_sex)
+
+ggplot(clean_combined, aes(x = `Combo Leg`, y = `Sitting Height`, color = Group)) +
+  # Population points
+  geom_point(alpha = 0.35, size = 2) +
+  # 90% confidence ellipses per Sex (bivariate normal ellipse)
+  stat_ellipse(data = clean_combined %>% filter(Group %in% c("Male", "Female")),level = 0.90, linewidth = 1) +
+  # Overlay study points (black crosses, sit on top)
+  geom_point(data = study_df, aes(x = `Combo Leg`, y = `Sitting Height`),
+             inherit.aes = FALSE, shape = 4, size = 3, stroke = 1.1) +
+  # Label only the Study data with plain text (no box). Use geom_label for text + box
+  geom_label(
+    data = study_df %>% as.data.frame(),
+    aes(label = ID, x = `Combo Leg`, y = `Sitting Height`),
+    vjust = -0.5, hjust = 1
+  ) +
+  labs(
+    x = "Combo Leg (mm)",
+    y = "Sitting Height (mm)",
+    title = "Combo Leg vs Sitting Height",
+    subtitle = "Population by Sex with 90% confidence ellipses; study overlay as crosses"
+  ) +
+  #scale_color_manual(values = c("M" = "navy", "F" = "deeppink"))+
+  theme_minimal(base_size = 12)
+
+ggsave("plots/Combo Leg vs. Sitting Height.png", plot = last_plot(), width = 9.5, height = 5, dpi = 200,bg="white")
+
+
+
 ```
 
 # Principal Component Analysis: Core Six Measures
-To further explore the multivariate structure of anthropometric variability relevant to cockpit fit, this section applies Principal Component Analysis (PCA) using the six most critical cockpit-relevant body dimensions—commonly mentioned earlier.  PCA combines the variables in a way that maximizes the variance of the PC1 as evident by the higher Sums of Squares of the `loadings`, which is good for dimension reduction but bad for interpretability. If we study the absolute values of the weights for PC1, we see that all values of PC1 are ~0.5. The same is true of PC2. By using the absolute values, it is impossible to tell which variables are associated to PC1 or PC2.
+To further explore the multivariate structure of anthropometric variability relevant to cockpit fit, this section applies Principal Component Analysis (PCA) using the six most critical cockpit-relevant body dimensions—commonly mentioned earlier.  PCA combines the variables in a way that maximizes the variance of the PC1 as evident by the highest Sums of Squares of the `loadings`, followed by the diametrically opposed PC2 and so on. Maximizing the variance in PC1 is good for dimension reduction but can result in loadings that are difficult to interpret. In the CFAS data, we see that the absolute values of the weights for PC1 are greater than 0.7 whereas the absolute values of PC2 loadings are around 0.4. This makes is difficult describe which variables are associated to PC1 or PC2.
 
 ```{r}
 
@@ -289,7 +343,7 @@ pca_vars = c(
 
 # Define study vs pop data - Males
 
-pop_pca <- data_m
+pop_pca <- pop_m
 study_pca <- clean_m
 
 pop_pca <- pop_pca %>%
@@ -310,13 +364,20 @@ pca_data_no_rotation <- principal(scaled_data,nfactors=2,covar=TRUE,rotate="none
 print(pca_data_no_rotation$loadings)
 weights_no_rotation <- pca_data_no_rotation$weights %>% as.data.frame()
 
-ggplot(weights_no_rotation, aes(x = PC1, y = PC2))+geom_point()+
+loadings_no_rot <- pca_data_no_rotation$loadings %>% as.data.frame()
+loadings_no_rot <- loadings_no_rot[1:(nrow(loadings_no_rot)/2),]
+
+ggplot(loadings_no_rot, aes(x = PC1, y = PC2))+geom_point()+
   scale_x_continuous(limits = c(-1,1)) +  # Define x-axis limits
   scale_y_continuous(limits = c(-1,1)) +  # Define y-axis limits
   geom_vline(xintercept = 0, color = "black", linetype = "dotted") +  # Vertical line for y-axis
   geom_hline(yintercept = 0, color = "black", linetype = "dotted") +  # Horizontal line for x-axis
   theme_minimal() + # Minimal theme for cleaner appearance
-  geom_text(aes(label = rownames(weights_no_rotation)), vjust = 1.5, hjust = -0.5, size = 3)   # Text labels with row 
+    labs(
+         x = "RC1",
+         y = "RC2",
+         title = "Loadings - No Rotation")+
+  geom_text(aes(label = rownames(loadings_no_rot)), vjust = 1.5, hjust = -0.5, size = 3)   # Text labels with row 
 
 
 ```
@@ -324,29 +385,40 @@ ggplot(weights_no_rotation, aes(x = PC1, y = PC2))+geom_point()+
 
 
 
-Principal Component 1 and 2 of the core six measures accounts for ~85% of the variability of the underlying dataset and is sufficient for accommodation modelling purposes.  Using the previously discussed logic, we can discard the remaining principle components and apply a varimax rotation to the retained PC1 and PC2 loadings to improve the interpretability of the results. We see that the weights of the factors within RC1 and RC2 are closer to 1 or 0. This is called the Varimax rotation. Note that the cumulative variance retained by R1 and R2 is the same as the rotated pca, but the sums of squares of both RC1 and RC2 more equal.
+When we look at the cumulative variance of Principal Component 1 and 2, we find that they account for ~85% of the variability of the underlying dataset. This is sufficient for accommodation modelling purposes.  We can discard the remaining principle components and apply a varimax rotation to the retained PC1 and PC2 loadings to improve the interpretability of the results. A varimax rotation adjusts the weights of the principle components closer to 0 or 1. The new coordinates are called *Rotated Component* scores RC1 and RC2. Note that unlike PC1, RC1 no longer accounts for the largest amount of the variability within the underlying dataset. Rather, the variance is more equally shared between RC1 and RC2 and together, still accound for 85% of the variability of the underlying dataset. 
 ```{r}
 
 pca_data <- principal(scaled_data,nfactors=2,covar=TRUE,rotate="varimax")
 
 weights_varimax <- pca_data$weights %>% as.data.frame()
-print(pca_data$loadings)
+weights_varimax
 
-ggplot(weights_varimax, aes(x = RC1, y = RC2))+geom_point()+
+loadings_varimax <- pca_data$loadings %>% as.data.frame()
+loadings_varimax <- loadings_varimax[1:(nrow(loadings_varimax)/2),]
+loadings_varimax
+
+
+ggplot(loadings_varimax, aes(x = RC1, y = RC2))+geom_point()+
   scale_x_continuous(limits = c(-1,1)) +  # Define x-axis limits
   scale_y_continuous(limits = c(-1,1)) +  # Define y-axis limits
   geom_vline(xintercept = 0, color = "black", linetype = "dotted") +  # Vertical line for y-axis
   geom_hline(yintercept = 0, color = "black", linetype = "dotted") +  # Horizontal line for x-axis
   theme_minimal() + # Minimal theme for cleaner appearance
-  geom_text(aes(label = rownames(weights_varimax)), vjust = 1.5, hjust = -0.5, size = 3)   # Text labels with row 
+    labs(
+         x = "RC1",
+         y = "RC2",
+         title = "Loadings - Varimax")+
+  geom_text(aes(label = rownames(loadings_varimax)), vjust = 1.5, hjust = -0.5, size = 3)   # Text labels with row 
+
+
 
 ```
 
-These new rotated dimensions capture the major axes of cockpit interaction. RC1 loads on torso measurements whereas R2 loads on limb measurements. By performing PCA on the reference population (e.g., CFAS), we identify the principal axes along which body proportions vary, reducing redundancy and emphasizing body shape over raw size. 
+These new rotated dimensions capture the major axes of cockpit interaction. RC1 loads most highly on torso measurements whereas R2 loads on limb measurements.
 
-Each participant’s anthropometric profile is then projected into this retated PCA space, allowing us to plot them relative to the broader population distribution. This enables:
+Each participant's anthropometric profile is  projected into this rotated PC space, allowing us to plot them relative to the broader population distribution. This enables:
 
-- Identification of outlier body types (e.g., extreme limb-to-torso proportions),
+- Identification of outliers body types (e.g., extreme limb-to-torso proportions),
 
 - Assessment of whether the participant sample adequately spans a target accommodation level (ellipse boundary), and
 
@@ -377,12 +449,13 @@ pca_plot <- ggplot() +
      )+
     theme_minimal() # Minimal theme for cleaner appearance
       
+print("Male")
 print(pca_data$loadings)
 print(pca_plot)
 
 # Define study vs pop data - Feamle
 
-pop_pca <- data_f
+pop_pca <- pop_f
 study_pca <- clean_f
 
 pop_pca <- pop_pca %>%
@@ -421,7 +494,7 @@ pca_plot <- ggplot() +
          subtitle = "Black: CFAS 2012, Red: 90% Accommodation Boundary"
      )+
     theme_minimal() # Minimal theme for cleaner appearance
-      
+print("Female")      
 print(pca_data$loadings)
 print(pca_plot)
 
@@ -538,7 +611,6 @@ subtitle_text <- paste(eq, sprintf("  |  R² = %.2f", r_squared))
 ggplot(pred_frame, aes(x = predicted, y = actual)) +
   geom_point(size = 3, color = "steelblue") +
   geom_smooth(method = "lm", se = TRUE, level = 0.95, color = "black", fill = "lightblue", linetype = "solid") +
-  geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "gray") +
   labs(
     title = "Predicted vs Actual Head Clearance",
     subtitle = subtitle_text,
@@ -554,23 +626,27 @@ ggplot(pred_frame, aes(x = predicted, y = actual)) +
   plot.margin = margin(t = 10, r = 50, b = 10, l = 10)
 ) +
   scale_x_continuous(limits = c(0,150)) +  # Define x-axis limit
-  geom_hline(yintercept = 38, linetype = "dashed", color = "red") + # helmet clearance 38 mm (1.5 in)
-  annotate("text", x = Inf, y = 38, label = "Accommodated (helmet)", hjust = 1.1, vjust = -0.5, color = "blue")+
-  annotate("text", x = Inf, y = 38, label = "Dissaccommodated (helmet)", hjust = 1.1, vjust = 1.5, color = "red")+
+  geom_hline(yintercept = 43, linetype = "dashed", color = "red") + # helmet clearance 35 mm + 8 mm
+  annotate("text", x = Inf, y = 45, label = "Dissaccommodated (helmet)", hjust = 1.1, vjust = 2.5, color = "red")+
   theme_minimal()
+
+ggsave("plots/Predicted vs. Actual Head Clearance.png", plot = last_plot(), width = 9.5, height = 5, dpi = 200,bg="white")
+
 
 df_new <- pop
 df_new$y_predicted <- predict(model, newdata = pop)
 
 df_summary <- df_new %>%
-  mutate(predicted_class = ifelse(y_predicted < 38, "Dissaccommodated", "Accommodated")) %>%
+  mutate(predicted_class = ifelse(y_predicted < 43, "Dissaccommodated", "Accommodated")) %>%
   group_by(Sex, predicted_class) %>% drop_na %>%
   count() %>%
   group_by(Sex) %>%
   mutate(percentage = round(100 * n / sum(n), 1)) %>%
   ungroup()
 
-kable(df_summary, caption = "Accommodation of Head Clearance (Helmet Thickness 38 mm)")
+kable(df_summary, caption = "Accommodation of Head Clearance (Helmet Thickness 35 mm + 8 mm)")
+
+
 ```
 
 # Over the Nose Vision
@@ -650,7 +726,6 @@ subtitle_text <- paste(eq, sprintf("  |  R² = %.2f", r_squared))
 ggplot(pred_frame, aes(x = predicted, y = actual)) +
   geom_point(size = 3, color = "steelblue") +
   geom_smooth(method = "lm", se = TRUE, level = 0.95, color = "black", fill = "lightblue", linetype = "solid") +
-  geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "gray") +
   labs(
     title = "Predicted vs Actual Over-the-Nose Vision (ONV)",
     subtitle = subtitle_text,
@@ -665,12 +740,15 @@ ggplot(pred_frame, aes(x = predicted, y = actual)) +
   theme(
   plot.margin = margin(t = 10, r = 50, b = 10, l = 10)
 ) +
-  scale_y_continuous(limits = c(-25,0)) +
+  scale_y_continuous(limits = c(-25,-5)) +
+  scale_x_continuous(limits = c(-24,-15)) +
   geom_hline(yintercept = -12, linetype = "dashed", color = "red") + # ONV requirement (arbitrary -12 degree requirement)+
   annotate("text", x = Inf, y = -12, label = "Dissaccommodated", hjust = 1.1, vjust = -0.5, color = "red")+
-  annotate("text", x = Inf, y = -12, label = "Accommodated", hjust = 1.1, vjust = 1.5, color = "blue")+
   
   theme_minimal()
+
+ggsave("plots/Predicted vs. Actual Over the Nose Vision.png", plot = last_plot(), width = 9.5, height = 5, dpi = 200,bg="white")
+
 
 df_new$y_predicted <- predict(model, newdata = df_new)
 
@@ -784,7 +862,6 @@ subtitle_text <- paste(eq, sprintf("  |  R² = %.2f", r_squared))
 ggplot(pred_frame, aes(x = predicted, y = actual)) +
   geom_point(size = 3, color = "steelblue") +
   geom_smooth(method = "lm", se = TRUE, level = 0.95, color = "black", fill = "lightblue", linetype = "solid") +
-  geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "gray") +
   labs(
     title = "Predicted vs Actual Shin Clearance",
     subtitle = subtitle_text,
@@ -802,9 +879,10 @@ ggplot(pred_frame, aes(x = predicted, y = actual)) +
   scale_y_continuous(limits = c(0,200)) +
   geom_hline(yintercept = 38, linetype = "dashed", color = "red") + # ONV requirement (arbitrary -12 degree requirement)+
   annotate("text", x = Inf, y = 38, label = "Dissaccommodated", hjust = 1.1, vjust = 1.5, color = "red")+
-  annotate("text", x = Inf, y = 38, label = "Accommodated", hjust = 1.1, vjust = -0.5, color = "blue")+
   
   theme_minimal()
+
+ggsave("plots/Predicted vs. Actual Shin Clearance.png", plot = last_plot(), width = 9.5, height = 5, dpi = 200,bg="white")
 
 df_new$y_predicted <- predict(model, newdata = df_new)
 
@@ -822,11 +900,11 @@ kable(df_summary, caption = "Accommodation of Shin Clearance (38 mm)")
 
 A strong negative correlation was observed between Waist Depth and the aft clearance margin to the cyclic (r = -0.96, p < 0.001), suggesting that as waist depth increases, the available clearance behind the cyclic decreases.
 
-A linear regression model was created to predict aft clearance using three body measurements: Waist Depth, BMI, and Weight. Through model selection, Weight was found to have little added value and was removed. The final model included Waist Depth and BMI as predictors. We also plot predicted vs. actual clearance against an arbitrary functional requirement criterion. Finally, we use the model to predict the accommodation level of males and female target populations.
+A linear regression model was created to predict aft clearance using three body measurements: Stature, Thigh Clearance, Biacromial Breadth, Weight, and BMI. Through model selection, only BMI and Biacromial Breadth were identified as the most suitable predictors. The other variables were found to have little added value and were removed. We also plot predicted vs. actual clearance against an arbitrary functional requirement criterion. Finally, we use the model to predict the accommodation level of males and female target populations.
 
-Although neither predictor reached individual statistical significance, together they explained a substantial portion of the variance in clearance (Adjusted R² = 0.918). The model was statistically significant overall (p < 0.001), suggesting that body size, particularly central mass indicators, is a strong predictor of cyclic-to-abdomen clearance.
+The model explained almost all the variance in clearance (Adjusted R² = 0.974) suggesting that body size and fat are a strong predictor of cyclic-to-abdomen clearance.
 
-The results highlight that bulkier body types (higher waist depth or BMI) may lead to reduced clearance, which could have implications for cockpit fit and safety.
+The results highlight that bulkier body types (higher BMI, wider torsos) will lead to reduced clearance, which could have implications for cockpit fit and safety.
 
 ```{r}
 
@@ -862,18 +940,12 @@ ggplot(df, aes(x = `Waist Depth`, y = aft_margin_body_mm)) +
 
 # Fit linear model
 
-model <- lm(aft_margin_body_mm ~ `Waist Depth` +
-              BMI + Weight, data = df)
+model <- lm(aft_margin_body_mm ~ Stature + `Thigh Clearance` + `Biacromial Breadth` + 
+          Weight + BMI, data = df)
 step_model <- stepAIC(model, direction = "both")
 summary(step_model)
 
-# Generate predicted values and confidence intervals
-df$aft_margin_body_mm_predicted <- predict(step_model)
-pred_frame <- data.frame(
-  predicted = df$aft_margin_body_mm_predicted,
-  actual = df$aft_margin_body_mm,
-  ID = df$ID
-)
+# Generate predicted 
 
 # Extract coefficients and R-squared
 coefs <- coef(step_model)
@@ -897,12 +969,11 @@ subtitle_text <- paste(eq, sprintf("  |  R² = %.2f", r_squared))
 ggplot(pred_frame, aes(x = predicted, y = actual)) +
   geom_point(size = 3, color = "steelblue") +
   geom_smooth(method = "lm", se = TRUE, level = 0.95, color = "black", fill = "lightblue", linetype = "solid") +
-  geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "gray") +
   labs(
     title = "Predicted vs Actual Cyclic Clearance",
     subtitle = subtitle_text,
-    x = "Predicted Shin Clearance (mm)",
-    y = "Actual Shin Clearance (mm)"
+    x = "Predicted Cyclic Abdomen Clearance (mm)",
+    y = "Actual Cyclic Abdomen Clearance (mm)"
   ) +
   geom_text(
     data = pred_frame %>% as.data.frame(),
@@ -914,14 +985,17 @@ ggplot(pred_frame, aes(x = predicted, y = actual)) +
 ) +
   geom_hline(yintercept = 38, linetype = "dashed", color = "red") + # ONV requirement (arbitrary -12 degree requirement)+
   annotate("text", x = Inf, y = 38, label = "Dissaccommodated", hjust = 1.1, vjust = 1.5, color = "red")+
-  annotate("text", x = Inf, y = 38, label = "Accommodated", hjust = 1.1, vjust = -0.5, color = "blue")+
   
   theme_minimal()
 
+ggsave("plots/Predicted vs. Actual Cyclic Abdomen Clearance.png", plot = last_plot(), width = 9.5, height = 5, dpi = 200,bg="white")
 
+# Predicted values for CFAS populations are not possible because CFAS did not report on Waist Depth.
+
+df_new$y_predicted <- predict(model, newdata = df_new)
 
 df_summary <- df_new %>%
-  mutate(predicted_class = ifelse(y_predicted > 38, "Dissaccommodated", "Accommodated")) %>%
+  mutate(predicted_class = ifelse(y_predicted < 38, "Dissaccommodated", "Accommodated")) %>%
   group_by(Sex, predicted_class) %>%
   count() %>%
   group_by(Sex) %>%
@@ -1015,7 +1089,6 @@ subtitle_text <- paste(eq, sprintf("  |  R² = %.2f", r_squared))
 ggplot(pred_frame, aes(x = predicted, y = actual)) +
   geom_point(size = 3, color = "steelblue") +
   geom_smooth(method = "lm", se = TRUE, level = 0.95, color = "black", fill = "lightblue", linetype = "solid") +
-  geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "gray") +
   labs(
     title = "Predicted vs Actual Zone 1 Cyclic Fwd Reach (%)",
     subtitle = subtitle_text,
@@ -1030,16 +1103,18 @@ ggplot(pred_frame, aes(x = predicted, y = actual)) +
   theme(
   plot.margin = margin(t = 10, r = 50, b = 10, l = 10)
 ) +
-  geom_hline(yintercept = 75, linetype = "dashed", color = "red") + # ONV requirement (arbitrary -12 degree requirement)+
-  annotate("text", x = Inf, y = 75, label = "Accommodated", hjust = 1.1, vjust = -0.5, color = "blue")+
-  annotate("text", x = Inf, y = 75, label = "Disccommodated", hjust = 1.1, vjust = 1.5, color = "red")+
+  geom_hline(yintercept = 60, linetype = "dashed", color = "red") + # ONV requirement (arbitrary -12 degree requirement)+
+  annotate("text", x = Inf, y = 60, label = "Disccommodated", hjust = 1.1, vjust = 1.5, color = "red")+
   
   theme_minimal()
+
+ggsave("plots/Predicted vs. Actual Zone 1 Cyclic Fwd Reach.png", plot = last_plot(), width = 9.5, height = 5, dpi = 200,bg="white")
+
 
 df_new$y_predicted <- predict(model, newdata = df_new)
 
 df_summary <- df_new %>%
-  mutate(predicted_class = ifelse(y_predicted < 75, "Dissaccommodated", "Accommodated")) %>%
+  mutate(predicted_class = ifelse(y_predicted < 60, "Dissaccommodated", "Accommodated")) %>%
   group_by(Sex, predicted_class) %>%
   count() %>%
   group_by(Sex) %>%
@@ -1134,7 +1209,6 @@ subtitle_text <- paste(eq, sprintf("  |  R² = %.2f", r_squared))
 ggplot(pred_frame, aes(x = predicted, y = actual)) +
   geom_point(size = 3, color = "steelblue") +
   geom_smooth(method = "lm", se = TRUE, level = 0.95, color = "black", fill = "lightblue", linetype = "solid") +
-  geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "gray") +
   labs(
     title = "Predicted vs Actual Maximum Rudder Position",
     subtitle = subtitle_text,
@@ -1152,6 +1226,9 @@ ggplot(pred_frame, aes(x = predicted, y = actual)) +
   plot.margin = margin(t = 10, r = 50, b = 10, l = 10)
 ) +
   theme_minimal()
+
+ggsave("plots/Predicted vs. Actual Reach to Rudder Pedals.png", plot = last_plot(), width = 9.5, height = 5, dpi = 200,bg="white")
+
 
 df_new$y_predicted <- predict(model, newdata = df_new)
 
@@ -1285,7 +1362,6 @@ subtitle_text <- paste(eq, sprintf("  |  R² = %.2f", r_squared))
 ggplot(pred_frame, aes(x = predicted, y = actual)) +
   geom_point(size = 3, color = "steelblue") +
   geom_smooth(method = "lm", se = TRUE, level = 0.95, color = "black", fill = "lightblue", linetype = "solid") +
-  geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "gray") +
   labs(
     title = "Predicted vs Actual Zone 1 Miss to LOW ROTOR Push Button",
     subtitle = subtitle_text,
@@ -1302,9 +1378,11 @@ ggplot(pred_frame, aes(x = predicted, y = actual)) +
 ) +
   geom_hline(yintercept = 0, linetype = "dashed", color = "red") + # ONV requirement (arbitrary -12 degree requirement)+
   annotate("text", x = Inf, y = -12, label = "Dissaccommodated", hjust = 1.1, vjust = -2.5, color = "red")+
-  annotate("text", x = Inf, y = -12, label = "Accommodated", hjust = 1.1, vjust = 0.5, color = "blue")+
   
   theme_minimal()
+
+ggsave("plots/Predicted vs. Actual Zone 1 LOW ROTOR.png", plot = last_plot(), width = 9.5, height = 5, dpi = 200,bg="white")
+
 
 df_new$y_predicted <- predict(model, newdata = df_new)
 
@@ -1399,7 +1477,6 @@ subtitle_text <- paste(eq, sprintf("  |  R² = %.2f", r_squared))
 ggplot(pred_frame, aes(x = predicted, y = actual)) +
   geom_point(size = 3, color = "steelblue") +
   geom_smooth(method = "lm", se = TRUE, level = 0.95, color = "black", fill = "lightblue", linetype = "solid") +
-  geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "gray") +
   labs(
     title = "Predicted vs Actual Zone 1 Miss to Control Boost Toggle Switch",
     subtitle = subtitle_text,
@@ -1415,6 +1492,9 @@ ggplot(pred_frame, aes(x = predicted, y = actual)) +
   plot.margin = margin(t = 10, r = 50, b = 10, l = 10)
 ) +
   theme_minimal()
+
+ggsave("plots/Predicted vs. Actual Zone 1 CONTROL BOOST.png", plot = last_plot(), width = 9.5, height = 5, dpi = 200,bg="white")
+
 
 df_new$y_predicted <- predict(model, newdata = df_new)
 
@@ -1562,11 +1642,14 @@ ggplot(pred_frame, aes(x = predicted, y = actual, color = seat_pos)) +
   theme(
   plot.margin = margin(t = 10, r = 80, b = 10, l = 10)
 ) +
-  geom_hline(yintercept = 13, linetype = "dashed", color = "red") + # ONV requirement (arbitrary -12 degree requirement)+
-  annotate("text", x = Inf, y = 13, label = "Accommodated", hjust = 1.1, vjust = -0.5, color = "blue")+
-  annotate("text", x = Inf, y = 13, label = "Disccommodated", hjust = 1.1, vjust = 1.5, color = "red")+
+  geom_hline(yintercept = 12, linetype = "dashed", color = "red") + # ONV requirement (arbitrary -12 degree requirement)+
+  annotate("text", x = Inf, y = 12, label = "Accommodated", hjust = 1.1, vjust = -0.5, color = "blue")+
+  annotate("text", x = Inf, y = 12, label = "Disccommodated", hjust = 1.1, vjust = 1.5, color = "red")+
   
   theme_minimal()
+
+ggsave("plots/Predicted vs. Actual Beoing 737 ONV.png", plot = last_plot(), width = 9.5, height = 5, dpi = 200,bg="white")
+
 
 subtitle_text
 
@@ -1581,18 +1664,9 @@ df_expanded <- bind_rows(
 df_expanded$y_predicted <- predict(model, newdata = df_expanded)
 
 df_summary <- df_expanded %>%
-  mutate(predicted_class = ifelse(y_predicted < 14, "Dissaccommodated", "Accommodated")) %>%
-  group_by(Sex, predicted_class) %>%
-  count() %>%
-  group_by(Sex) %>%
-  mutate(percentage = round(100 * n / sum(n), 1)) %>%
-  ungroup()
-
-
-df_summary <- df_expanded %>%
   group_by(ID, Sex) %>%  
   summarise(
-    any_accommodated = any(y_predicted > 13), # functional requirement
+    any_accommodated = any(y_predicted > 12), # functional requirement
     .groups = "drop"
   ) %>%
   mutate(
