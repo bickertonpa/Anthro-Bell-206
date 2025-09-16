@@ -75,6 +75,8 @@ library(knitr) # for displaying tables in knitted document
 library(kableExtra)
 library(stringr) # for data cleaning
 library(MASS) # for stepwise regression
+library(DT) # for datatable
+library(ggrepel) #for spacing labels.
 
 # import the libraries
 source("Modules/AccomodationFunctions.R")
@@ -155,7 +157,7 @@ pop_f <- pop_f %>% dplyr::select(all_of(common_columns)) %>% dplyr::select(-'Sex
 # Univariate Summary Tables: Raw and Percentile Comparisons
 To support initial inspection of the participant dataset, this section generates univariate summary statistics for key anthropometric variables. These include both:
 
-- Raw values (e.g., in millimetres, or kg), useful for direct dimensional interpretation and cockpit design reference, and
+- Raw values (e.g., in millimeters, or kg), useful for direct dimensional interpretation and cockpit design reference, and
 
 - Percentile rankings (%), computed by comparing each participant’s measurements against the appropriate reference population.
 
@@ -183,18 +185,6 @@ write.csv(sample_anthro_percentile, "output/anthro_percentile_m.csv", row.names 
 
 anthro_summary_m <- sample_anthro_percentile 
 
-# Suppose 'my_wide_df' is your data frame with 20 columns
-block_1 <- anthro_summary_m %>% dplyr::select(1:5)
-block_2 <- anthro_summary_m %>% dplyr::select(6:10)
-block_3 <- anthro_summary_m %>% dplyr::select(11:15)
-block_4 <- anthro_summary_m %>% dplyr::select(16:19)
-
-# In your .Rmd body
-kable(block_1, caption = "Male Block 1: Variables 1–5")
-kable(block_2, caption = "Male Block 2: Variables 6–10")
-kable(block_3, caption = "Male Block 3: Variables 11–15")
-kable(block_4, caption = "Male Block 4: Variables 16–20")
-
 sample_scaled_pop <- scale_sample_based_on_population(df_anthros_f,pop_f%>% dplyr::select(-'Source',-Weight,-ID))
 scaled_sample <- sample_scaled_pop$scaled_sample
 sample_percentile <- sample_scaled_pop$sample_percentiles
@@ -205,17 +195,9 @@ write.csv(sample_anthro_percentile, "output/anthro_percentile_f.csv", row.names 
 
 anthro_summary_f <- sample_anthro_percentile
 
-# Suppose 'my_wide_df' is your data frame with 20 columns
-block_1 <- anthro_summary_f %>% dplyr::select(1:5)
-block_2 <- anthro_summary_f %>% dplyr::select(6:10)
-block_3 <- anthro_summary_f %>% dplyr::select(11:15)
-block_4 <- anthro_summary_f %>% dplyr::select(16:19)
-
-# In your .Rmd body
-kable(block_1, caption = "Female Block 1: Variables 1–5")
-kable(block_2, caption = "Female Block 2: Variables 6–10")
-kable(block_3, caption = "Female Block 3: Variables 11–15")
-kable(block_4, caption = "Female Block 4: Variables 16–20")
+anthro_summary <- rbind(anthro_summary_f,anthro_summary_m) %>% dplyr::select(-Name)
+write.csv(anthro_summary, "output/anthro_summary.csv", row.names = FALSE)
+datatable(anthro_summary,height = 600)
 ```
 
 # Bivariate Plot: Sitting Height vs. Combo Leg
@@ -229,6 +211,7 @@ This type of visualization is also useful for *selecting subjects* for physical 
 clean_m <- df_anthros_m %>% dplyr::select(all_of(common_columns)) %>% dplyr::select(-'Sex')
 clean_f <- df_anthros_f %>% dplyr::select(all_of(common_columns)) %>% dplyr::select(-'Sex')
 
+# Bivariate Plot Male
 data_m <- rbind(pop_m, clean_m)
 # Plot
 ggplot(data_m, aes(x = `Combo Leg`, y = `Sitting Height`)) +
@@ -249,6 +232,7 @@ ggplot(data_m, aes(x = `Combo Leg`, y = `Sitting Height`)) +
   labs(title = "Male Participant Data vs. CFAS 2012:Male RCAF (90% CI)") +
   theme_minimal()
 
+# Bivariate Plot Female
 data_f <- rbind(pop_f, clean_f)
 ggplot(data_f, aes(x = `Combo Leg`, y = `Sitting Height`)) +
   geom_point(aes(fill = Source),
@@ -268,34 +252,35 @@ ggplot(data_f, aes(x = `Combo Leg`, y = `Sitting Height`)) +
   labs(title = "Female Participant Data vs. CFAS 2012:Female CAF (90% CI)") +
   theme_minimal()
 
-
+# Combine Study and Population Datasets
 f_sex <- clean_f %>%
   mutate(
     Sex = "F",
-    Group = "Study"
+    Group = "Study Female"
   )
 
 m_sex <- clean_m %>%
   mutate(
     Sex = "M",
-    Group = "Study"
+    Group = "Study Male"
   )
 
 pop_m_sex <- pop_m %>%
   mutate(
     Sex = "M",
-    Group = "Male"
+    Group = "RCAF Male"
   )
 
 pop_f_sex <- pop_f %>%
   mutate(
     Sex = "F",
-    Group = "Female"
+    Group = "CAF Female"
   )
 
 clean_combined <- rbind(pop_f_sex,pop_m_sex,m_sex,f_sex)
 study_df = rbind(m_sex,f_sex)
 
+# Plot Study vs. Population Data
 ggplot(clean_combined, aes(x = `Combo Leg`, y = `Sitting Height`, color = Group)) +
   # Population points
   geom_point(alpha = 0.35, size = 2) +
@@ -303,7 +288,7 @@ ggplot(clean_combined, aes(x = `Combo Leg`, y = `Sitting Height`, color = Group)
   stat_ellipse(data = clean_combined %>% filter(Group %in% c("Male", "Female")),level = 0.90, linewidth = 1) +
   # Overlay study points (black crosses, sit on top)
   geom_point(data = study_df, aes(x = `Combo Leg`, y = `Sitting Height`),
-             inherit.aes = FALSE, shape = 4, size = 3, stroke = 1.1) +
+             inherit.aes = FALSE, shape = 2, size = 3, stroke = 1.1) +
   # Label only the Study data with plain text (no box). Use geom_label for text + box
   geom_label(
     data = study_df %>% as.data.frame(),
@@ -316,7 +301,6 @@ ggplot(clean_combined, aes(x = `Combo Leg`, y = `Sitting Height`, color = Group)
     title = "Combo Leg vs Sitting Height",
     subtitle = "Population by Sex with 90% confidence ellipses; study overlay as crosses"
   ) +
-  #scale_color_manual(values = c("M" = "navy", "F" = "deeppink"))+
   theme_minimal(base_size = 12)
 
 ggsave("plots/Combo Leg vs. Sitting Height.png", plot = last_plot(), width = 9.5, height = 5, dpi = 200,bg="white")
@@ -361,14 +345,12 @@ scaled_data <- scale(pop_pca) # Standardize the population data (mean = 0, SD = 
 
 pca_data_no_rotation <- principal(scaled_data,nfactors=2,covar=TRUE,rotate="none")
 
-print(pca_data_no_rotation$loadings)
-weights_no_rotation <- pca_data_no_rotation$weights %>% as.data.frame()
-
 loadings_no_rot <- pca_data_no_rotation$loadings %>% as.data.frame()
 loadings_no_rot <- loadings_no_rot[1:(nrow(loadings_no_rot)/2),]
+print(pca_data_no_rotation$loadings)
 
 ggplot(loadings_no_rot, aes(x = PC1, y = PC2))+geom_point()+
-  scale_x_continuous(limits = c(-1,1)) +  # Define x-axis limits
+  scale_x_continuous(limits = c(0,1)) +  # Define x-axis limits
   scale_y_continuous(limits = c(-1,1)) +  # Define y-axis limits
   geom_vline(xintercept = 0, color = "black", linetype = "dotted") +  # Vertical line for y-axis
   geom_hline(yintercept = 0, color = "black", linetype = "dotted") +  # Horizontal line for x-axis
@@ -377,8 +359,8 @@ ggplot(loadings_no_rot, aes(x = PC1, y = PC2))+geom_point()+
          x = "RC1",
          y = "RC2",
          title = "Loadings - No Rotation")+
-  geom_text(aes(label = rownames(loadings_no_rot)), vjust = 1.5, hjust = -0.5, size = 3)   # Text labels with row 
-
+  #geom_text(aes(label = rownames(loadings_no_rot)), vjust = 1.5, hjust = -0.5, size = 4)   # Text labels with row 
+  geom_text_repel(aes(label = rownames(loadings_no_rot)),point.padding = 0.1,min.segment.length = 0.1,size = 3)   # Text labels with row 
 
 ```
 
@@ -399,7 +381,7 @@ loadings_varimax
 
 
 ggplot(loadings_varimax, aes(x = RC1, y = RC2))+geom_point()+
-  scale_x_continuous(limits = c(-1,1)) +  # Define x-axis limits
+  scale_x_continuous(limits = c(0,1)) +  # Define x-axis limits
   scale_y_continuous(limits = c(-1,1)) +  # Define y-axis limits
   geom_vline(xintercept = 0, color = "black", linetype = "dotted") +  # Vertical line for y-axis
   geom_hline(yintercept = 0, color = "black", linetype = "dotted") +  # Horizontal line for x-axis
@@ -408,7 +390,7 @@ ggplot(loadings_varimax, aes(x = RC1, y = RC2))+geom_point()+
          x = "RC1",
          y = "RC2",
          title = "Loadings - Varimax")+
-  geom_text(aes(label = rownames(loadings_varimax)), vjust = 1.5, hjust = -0.5, size = 3)   # Text labels with row 
+  geom_text_repel(aes(label = rownames(loadings_varimax)),point.padding = 0.1,min.segment.length = 0.1,size = 3)   # Text labels with row 
 
 
 
