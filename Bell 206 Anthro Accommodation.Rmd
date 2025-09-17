@@ -197,7 +197,7 @@ anthro_summary_f <- sample_anthro_percentile
 
 anthro_summary <- rbind(anthro_summary_f,anthro_summary_m) %>% dplyr::select(-Name)
 write.csv(anthro_summary, "output/anthro_summary.csv", row.names = FALSE)
-datatable(anthro_summary,height = 600)
+datatable(anthro_summary,height = 800)
 ```
 
 # Bivariate Plot: Sitting Height vs. Combo Leg
@@ -356,8 +356,8 @@ ggplot(loadings_no_rot, aes(x = PC1, y = PC2))+geom_point()+
   geom_hline(yintercept = 0, color = "black", linetype = "dotted") +  # Horizontal line for x-axis
   theme_minimal() + # Minimal theme for cleaner appearance
     labs(
-         x = "RC1",
-         y = "RC2",
+         x = "PC1",
+         y = "PC2",
          title = "Loadings - No Rotation")+
   #geom_text(aes(label = rownames(loadings_no_rot)), vjust = 1.5, hjust = -0.5, size = 4)   # Text labels with row 
   geom_text_repel(aes(label = rownames(loadings_no_rot)),point.padding = 0.1,min.segment.length = 0.1,size = 3)   # Text labels with row 
