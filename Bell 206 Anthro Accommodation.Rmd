@@ -343,10 +343,10 @@ study_pca <- study_pca %>%
 
 scaled_data <- scale(pop_pca) # Standardize the population data (mean = 0, SD = 1)
 
-pca_data_no_rotation <- principal(scaled_data,nfactors=2,covar=TRUE,rotate="none")
+pca_data_no_rotation <- principal(scaled_data,nfactors=6,covar=TRUE,rotate="none")
 
 loadings_no_rot <- pca_data_no_rotation$loadings %>% as.data.frame()
-loadings_no_rot <- loadings_no_rot[1:(nrow(loadings_no_rot)/2),]
+loadings_no_rot <- loadings_no_rot[1:(nrow(loadings_no_rot)/6),]
 print(pca_data_no_rotation$loadings)
 
 ggplot(loadings_no_rot, aes(x = PC1, y = PC2))+geom_point()+
