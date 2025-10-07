@@ -108,6 +108,8 @@ $$
 # Import survey data
 df_anthros <- read_sheet("https://docs.google.com/spreadsheets/d/1ivQo0QNx1Zyjlg1WvXoPJoW9RorD8KYH4fc5BYkQhO4/edit?gid=0#gid=0")%>% as.data.frame()
 rownames(df_anthros) <- df_anthros$ID
+write.csv(df_anthros, "output/df_anthros.csv", row.names = FALSE)
+
 
 
 # Add combo leg
@@ -504,6 +506,15 @@ df_rudder <- read_sheet("https://docs.google.com/spreadsheets/d/1w8L0ETVMvDVrFIs
 df_hand_reach <- read_sheet("https://docs.google.com/spreadsheets/d/1MezpHsf-7rbU6M6C6czHL7ZJDAOgsHX63HWkZWBLItc/edit?gid=96497919#gid=96497919") %>% as.data.frame()
 
 df_controls <- read_sheet("https://docs.google.com/spreadsheets/d/1QnLAoSWwkXrCxc5orFyGn6PkcvkZnylNm4Erdpp2NsY/edit?gid=0#gid=0") %>% as.data.frame()
+
+write.csv(df_onv, "output/df_onv.csv", row.names = FALSE)
+write.csv(df_onv_737, "output/df_onv_737.csv", row.names = FALSE)
+write.csv(df_head_clear, "output/df_head_clear.csv", row.names = FALSE)
+write.csv(df_shin, "output/df_shin.csv", row.names = FALSE)
+write.csv(df_motion, "output/df_motion.csv", row.names = FALSE)
+write.csv(df_rudder, "output/df_rudder.csv", row.names = FALSE)
+write.csv(df_hand_reach, "output/df_hand_reach.csv", row.names = FALSE)
+write.csv(df_controls, "output/df_controls.csv", row.names = FALSE)
 
 ```
 
@@ -1496,6 +1507,9 @@ We also took the opportunity to measure the over the nose vision of the Beoing 7
 ```{r}
 
 df_seat_positions <- read_sheet("https://docs.google.com/spreadsheets/d/1ZP8djxCW8M4S3qmLSWnqe8YVQoUlXagu-mWTaeU3V0Q/edit?gid=0#gid=0") %>% as.data.frame()
+write.csv(df_seat_positions, "output/df_seat_positions.csv", row.names = FALSE)
+
+
 
 #Join anthros
 
